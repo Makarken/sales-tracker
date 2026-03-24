@@ -729,117 +729,141 @@ function saveEdit(){
 // ════════════════════════════════════════
 //  PDF GENERATION
 // ════════════════════════════════════════
+// Get natural image dimensions from base64
+function imgSize(b64){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>res({w:img.naturalWidth, h:img.naturalHeight});
+    img.onerror=()=>res({w:1,h:1});
+    img.src=b64;
+  });
+}
+
+// Fit image into box keeping aspect ratio, return {x,y,w,h} centered
+function fitImg(natW, natH, boxX, boxY, boxW, boxH){
+  const scale=Math.min(boxW/natW, boxH/natH);
+  const w=natW*scale, h=natH*scale;
+  return { x: boxX+(boxW-w)/2, y: boxY+(boxH-h)/2, w, h };
+}
+
 async function buildPdfDoc(month){
   const {jsPDF}=window.jspdf;
   const items=records.filter(r=>r.month===month);
   if(!items.length) return null;
 
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const W=210, H=297;
+  // White A4, portrait
+  const doc=new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  const W=210, H=297, PAD=12;
 
   for(let i=0; i<items.length; i++){
     if(i>0) doc.addPage();
     const r=items[i];
 
-    // ── PAGE LAYOUT ──
-    // Top info band: 0..52mm
-    // Item image: 54..148mm  (~94mm tall)
-    // Transaction image: 152..246mm (~94mm tall)
-    // Bottom: ref box
-
-    // Background
-    doc.setFillColor(15,15,16);
+    // ── WHITE BACKGROUND ──
+    doc.setFillColor(255,255,255);
     doc.rect(0,0,W,H,'F');
 
-    // ── INFO BAND ──
-    doc.setFillColor(22,22,24);
-    doc.rect(0,0,W,50,'F');
+    // ── TOP HEADER BAND ──
+    const hdrH=44;
+    const platColor = r.platform==='vinted' ? [30,185,180] : [180,130,60];
+    doc.setFillColor(...platColor);
+    doc.rect(0,0,W,hdrH,'F');
 
-    // Colour stripe by platform
-    if(r.platform==='vinted') doc.setFillColor(61,214,208);
-    else doc.setFillColor(212,170,106);
-    doc.rect(0,0,4,50,'F');
+    // Platform name
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9); doc.setFont(undefined,'bold');
+    doc.text(r.platform==='vinted'?'VINTED':'VESTIAIRE COLLECTIVE', PAD, 12);
 
-    // Platform label
-    if(r.platform==='vinted') doc.setTextColor(61,214,208);
-    else doc.setTextColor(212,170,106);
-    doc.setFontSize(8); doc.setFont(undefined,'bold');
-    doc.text(r.platform==='vinted'?'VINTED':'VESTIAIRE COLLECTIVE', 10, 10);
+    // Record number
+    doc.setFontSize(8); doc.setFont(undefined,'normal');
+    doc.text('Record #'+(i+1)+'  /  '+monthLabel(month), W-PAD, 12, {align:'right'});
 
-    // Index + month
-    doc.setTextColor(120,115,110); doc.setFontSize(8); doc.setFont(undefined,'normal');
-    doc.text('Запись #'+(i+1)+' · '+monthLabel(month), W-10, 10, {align:'right'});
+    // Item name (latin/ascii safe)
+    doc.setFontSize(14); doc.setFont(undefined,'bold');
+    const title=(r.title||'—').substring(0,52);
+    doc.text(title, PAD, 24);
 
-    // Title
-    doc.setTextColor(235,230,220); doc.setFontSize(13); doc.setFont(undefined,'bold');
-    const title=(r.title||'—').substring(0,55);
-    doc.text(title, 10, 22);
+    // Amount + invoice row
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    let sub='';
+    if(r.amount) sub+='EUR '+parseFloat(r.amount).toFixed(2);
+    if(r.invoice) sub+=(sub?'   ':'')+'Invoice: '+r.invoice;
+    if(r.date)    sub+=(sub?'   ':'')+'Date: '+r.date;
+    doc.text(sub, PAD, 35);
 
-    // Amount
-    doc.setTextColor(93,222,138); doc.setFontSize(14); doc.setFont(undefined,'bold');
-    doc.text(r.amount?'EUR '+parseFloat(r.amount).toFixed(2):'—', 10, 33);
+    // ── DIVIDER ──
+    let y=hdrH+6;
 
-    // Invoice & date
-    doc.setTextColor(120,115,110); doc.setFontSize(8); doc.setFont(undefined,'normal');
-    let meta=[];
-    if(r.invoice) meta.push('Invoice: '+r.invoice);
-    if(r.date)    meta.push('Дата: '+r.date);
-    if(meta.length) doc.text(meta.join('   '), 10, 42);
+    // ── ITEM SCREENSHOT ──
+    const secLblH=6;
+    const imgBoxH=100; // max height for each image section
 
-    // ── ITEM IMAGE (top) ──
-    doc.setFillColor(30,30,35);
-    doc.rect(8, 54, W-16, 92, 'F');
-    doc.setDrawColor(50,50,55); doc.setLineWidth(0.3);
-    doc.rect(8, 54, W-16, 92, 'S');
-    // label
-    doc.setTextColor(100,95,90); doc.setFontSize(8);
-    doc.text('СКРИН ТОВАРА', 12, 61);
+    // Section label
+    doc.setFontSize(7); doc.setFont(undefined,'bold');
+    doc.setTextColor(150,145,140);
+    doc.text('ITEM SCREENSHOT', PAD, y+secLblH);
+    y+=secLblH+2;
+
     if(r.imgItem){
       try{
+        const {w:nw,h:nh}=await imgSize(r.imgItem);
+        const fit=fitImg(nw,nh, PAD, y, W-PAD*2, imgBoxH);
         const fmt=r.imgItem.startsWith('data:image/png')?'PNG':'JPEG';
-        // fit image within box: x=8, y=63, w=W-16=194, h=80
-        doc.addImage(r.imgItem, fmt, 10, 63, W-20, 80, undefined, 'FAST');
-      }catch(e){}
+        doc.addImage(r.imgItem, fmt, fit.x, fit.y, fit.w, fit.h, undefined, 'MEDIUM');
+        y+=imgBoxH+6;
+      }catch(e){ y+=10; }
     } else {
-      doc.setTextColor(60,55,50); doc.setFontSize(10);
-      doc.text('Скрин не загружен', W/2, 100, {align:'center'});
+      doc.setFontSize(9); doc.setTextColor(200,195,190);
+      doc.text('(no screenshot)', W/2, y+imgBoxH/2, {align:'center'});
+      y+=imgBoxH+6;
     }
 
-    // ── TRANSACTION IMAGE (bottom) ──
-    doc.setFillColor(30,30,35);
-    doc.rect(8, 150, W-16, 92, 'F');
-    doc.setDrawColor(50,50,55);
-    doc.rect(8, 150, W-16, 92, 'S');
-    doc.setTextColor(100,95,90); doc.setFontSize(8);
-    doc.text('СКРИН ТРАНЗАКЦИИ (БАНК)', 12, 157);
+    // ── THIN SEPARATOR ──
+    doc.setDrawColor(220,218,215); doc.setLineWidth(0.3);
+    doc.line(PAD, y, W-PAD, y);
+    y+=6;
+
+    // ── TRANSACTION SCREENSHOT ──
+    doc.setFontSize(7); doc.setFont(undefined,'bold');
+    doc.setTextColor(150,145,140);
+    doc.text('BANK / TRANSACTION SCREENSHOT', PAD, y+secLblH);
+    y+=secLblH+2;
+
     if(r.imgTxn){
       try{
+        const {w:nw,h:nh}=await imgSize(r.imgTxn);
+        const fit=fitImg(nw,nh, PAD, y, W-PAD*2, imgBoxH);
         const fmt=r.imgTxn.startsWith('data:image/png')?'PNG':'JPEG';
-        doc.addImage(r.imgTxn, fmt, 10, 159, W-20, 80, undefined, 'FAST');
-      }catch(e){}
+        doc.addImage(r.imgTxn, fmt, fit.x, fit.y, fit.w, fit.h, undefined, 'MEDIUM');
+        y+=imgBoxH+6;
+      }catch(e){ y+=10; }
     } else {
-      doc.setTextColor(60,55,50); doc.setFontSize(10);
-      doc.text('Скрин не загружен', W/2, 196, {align:'center'});
+      doc.setFontSize(9); doc.setTextColor(200,195,190);
+      doc.text('(no screenshot)', W/2, y+imgBoxH/2, {align:'center'});
+      y+=imgBoxH+6;
     }
 
-    // ── PAYMENT REFERENCE BOX ──
+    // ── PAYMENT REFERENCE ──
     if(r.ref){
-      doc.setFillColor(12,12,14);
-      doc.rect(8, 246, W-16, 30, 'F');
-      doc.setDrawColor(40,40,44);
-      doc.rect(8, 246, W-16, 30, 'S');
-      doc.setTextColor(100,95,90); doc.setFontSize(7); doc.setFont(undefined,'bold');
-      doc.text('НАЗНАЧЕНИЕ ПЛАТЕЖА:', 12, 253);
-      doc.setFont(undefined,'normal');
-      doc.setTextColor(200,195,185); doc.setFontSize(8);
-      const lines=doc.splitTextToSize(r.ref, W-28);
-      doc.text(lines[0]||'', 12, 260);
-      if(lines[1]) doc.text(lines[1], 12, 267);
+      // ensure it fits; if y is too low add page
+      if(y+28>H-8){ doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F'); y=14; }
+      doc.setDrawColor(220,218,215); doc.setLineWidth(0.3);
+      doc.line(PAD, y, W-PAD, y);
+      y+=6;
+      doc.setFontSize(7); doc.setFont(undefined,'bold');
+      doc.setTextColor(150,145,140);
+      doc.text('PAYMENT REFERENCE', PAD, y);
+      y+=5;
+      doc.setFontSize(9); doc.setFont(undefined,'normal');
+      doc.setTextColor(40,40,40);
+      const refLines=doc.splitTextToSize(r.ref, W-PAD*2);
+      refLines.forEach(line=>{ doc.text(line, PAD, y); y+=5; });
     }
 
-    // Footer
-    doc.setTextColor(50,48,45); doc.setFontSize(7);
-    doc.text(monthLabel(month)+' · '+new Date().toLocaleDateString('ru-RU'), W/2, 292, {align:'center'});
+    // ── FOOTER ──
+    doc.setFontSize(7); doc.setFont(undefined,'normal');
+    doc.setTextColor(190,185,180);
+    doc.text(monthLabel(month)+' · '+new Date().toLocaleDateString('ru-RU'), W/2, H-5, {align:'center'});
   }
 
   return doc;
