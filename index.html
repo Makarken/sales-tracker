@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Учёт продаж</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0f0f10;--s1:#161618;--s2:#1e1e21;
+  --border:#2a2a2e;--border2:#3a3a3f;
+  --gold:#d4aa6a;--gold2:#8a6a3a;
+  --teal:#3dd6d0;--green:#5dde8a;--red:#e06060;
+  --text:#eae5dc;--muted:#777270;--muted2:#4a4845;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:200;}
+.logo{font-size:17px;font-weight:700;letter-spacing:-0.02em;}
+.logo em{color:var(--gold);font-style:normal;}
+.topbtns{display:flex;gap:6px;}
+.tbtn{background:none;border:1px solid var(--border2);color:var(--muted);padding:7px 14px;font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;border-radius:7px;transition:all .15s;font-weight:500;}
+.tbtn.active,.tbtn:hover{border-color:var(--gold2);color:var(--gold);background:rgba(212,170,106,.07);}
+
+/* ── MONTH BAR ── */
+.mbar{display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--s1);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.mbar::-webkit-scrollbar{display:none;}
+.mbtn{flex-shrink:0;background:none;border:1px solid var(--border2);color:var(--muted);padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;border-radius:20px;transition:all .15s;white-space:nowrap;}
+.mbtn.active{border-color:var(--gold);color:var(--gold);background:rgba(212,170,106,.1);}
+.mbtn:hover:not(.active){color:var(--text);}
+.mbtn-add{flex-shrink:0;background:none;border:1px dashed var(--border2);color:var(--muted2);padding:6px 12px;font-size:12px;cursor:pointer;border-radius:20px;transition:all .15s;white-space:nowrap;}
+.mbtn-add:hover{border-color:var(--gold2);color:var(--gold);}
+
+/* ── PAGE ── */
+.page{padding:16px;max-width:680px;margin:0 auto;}
+
+/* ── UPLOAD COLS ── */
+.ucols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+@media(max-width:500px){.ucols{grid-template-columns:1fr;}}
+
+.ubox{border:1.5px dashed var(--border2);border-radius:10px;background:var(--s1);overflow:hidden;}
+.ubox-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--border);}
+.ubox-lbl{font-size:12px;font-weight:600;letter-spacing:.03em;}
+.ubox-lbl.ic{color:var(--teal);}
+.ubox-lbl.tc{color:var(--gold);}
+.ubox-cnt{font-size:11px;color:var(--muted);background:var(--s2);padding:2px 8px;border-radius:10px;}
+.dropzone{padding:12px;min-height:80px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:background .15s;}
+.dropzone:hover,.dropzone.dg{background:rgba(212,170,106,.04);}
+.dropzone input{display:none;}
+.dph{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted);}
+.dph-icon{font-size:26px;opacity:.35;}
+.dph-txt{font-size:11px;text-align:center;line-height:1.5;}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:5px;width:100%;}
+.titem{position:relative;aspect-ratio:3/4;overflow:hidden;border-radius:5px;border:1px solid var(--border);cursor:pointer;}
+.titem img{width:100%;height:100%;object-fit:cover;display:block;}
+.tnum{position:absolute;top:3px;left:3px;background:rgba(0,0,0,.8);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;}
+.tdel{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.8);color:var(--red);border:none;font-size:13px;cursor:pointer;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:3px;opacity:0;transition:opacity .12s;}
+.titem:hover .tdel,.titem:active .tdel{opacity:1;}
+.addmore-row{padding:8px 12px 12px;}
+.addmore{width:100%;background:none;border:1px dashed var(--border2);color:var(--muted);padding:8px;font-size:12px;cursor:pointer;border-radius:7px;transition:all .15s;}
+.addmore:hover{border-color:var(--gold2);color:var(--gold);}
+
+/* ── PAIRS ── */
+.pairs-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
+.pairs-title{font-size:15px;font-weight:600;}
+.btn-green{background:var(--green);color:#0a0a0b;border:none;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border-radius:8px;transition:opacity .15s;}
+.btn-green:hover{opacity:.85;}
+
+.pcard{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;}
+.pcard-top{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.pcard-num{font-size:12px;font-weight:600;color:var(--muted);}
+.plattgl{display:flex;border-radius:7px;overflow:hidden;border:1px solid var(--border2);}
+.plattgl button{flex:1;padding:6px 14px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;}
+.plattgl button.von{background:rgba(61,214,208,.15);color:var(--teal);}
+.plattgl button.vcon{background:rgba(212,170,106,.15);color:var(--gold);}
+.btn-remove{background:none;border:1px solid var(--border);color:var(--muted2);padding:6px 12px;font-size:12px;cursor:pointer;border-radius:7px;transition:all .15s;margin-left:auto;font-family:'Inter',sans-serif;}
+.btn-remove:hover{border-color:var(--red);color:var(--red);background:rgba(224,96,96,.06);}
+
+.pcard-thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.ptw{display:flex;flex-direction:column;gap:4px;}
+.pthumb{border-radius:7px;overflow:hidden;border:1px solid var(--border);aspect-ratio:4/3;background:var(--s2);cursor:zoom-in;}
+.pthumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.pthumb-lbl{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.03em;}
+.pthumb-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted2);font-size:11px;}
+
+.pfields{display:flex;flex-direction:column;gap:11px;}
+.pf-lbl{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-bottom:4px;}
+.pf-inp{width:100%;background:var(--s2);border:1.5px solid var(--border);color:var(--text);padding:10px 12px;font-size:14px;border-radius:7px;outline:none;transition:border-color .15s;font-family:'Inter',sans-serif;-webkit-appearance:none;}
+.pf-inp:focus{border-color:var(--gold2);}
+.pf-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.refbox{background:var(--s2);border:1.5px solid var(--border);border-radius:7px;padding:11px 12px;}
+.refval{font-size:13px;color:var(--text);line-height:1.6;word-break:break-all;margin-bottom:8px;min-height:18px;}
+.refval.empty{color:var(--muted2);font-style:italic;}
+.btn-copy{width:100%;background:var(--border2);border:none;color:var(--text);padding:9px;font-size:13px;font-weight:500;cursor:pointer;border-radius:6px;transition:all .15s;font-family:'Inter',sans-serif;}
+.btn-copy:hover,.btn-copy.ok{background:var(--green);color:#0a0a0b;}
+
+/* ── ARCHIVE ── */
+.mblock{margin-bottom:28px;}
+.mblock-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
+.mblock-left{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.mblock-name{font-size:16px;font-weight:700;}
+.mblock-total{color:var(--green);font-size:14px;font-weight:600;}
+.mblock-cnt{font-size:12px;color:var(--muted);}
+.btn-pdf{background:none;border:1.5px solid var(--gold2);color:var(--gold);padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;border-radius:7px;transition:all .15s;font-family:'Inter',sans-serif;}
+.btn-pdf:hover{background:var(--gold);color:#0a0a0b;border-color:var(--gold);}
+
+.rcard{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
+.rcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
+.rplat{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:20px;}
+.rplat.vinted{background:rgba(61,214,208,.12);color:var(--teal);}
+.rplat.vestiaire{background:rgba(212,170,106,.12);color:var(--gold);}
+.rcard-actions{display:flex;gap:6px;}
+.btn-edit{background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 12px;font-size:12px;cursor:pointer;border-radius:6px;transition:all .15s;font-family:'Inter',sans-serif;}
+.btn-edit:hover{border-color:var(--gold2);color:var(--gold);}
+.btn-del-r{background:none;border:1px solid var(--border);color:var(--muted2);padding:5px 10px;font-size:13px;cursor:pointer;border-radius:6px;transition:all .15s;}
+.btn-del-r:hover{border-color:var(--red);color:var(--red);}
+
+.rcard-thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.rthumb-w{display:flex;flex-direction:column;gap:4px;}
+.rthumb{aspect-ratio:4/3;overflow:hidden;border-radius:6px;border:1px solid var(--border);background:var(--s2);cursor:zoom-in;}
+.rthumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.rthumb-lbl{font-size:10px;color:var(--muted);text-align:center;}
+.rcard-title{font-size:15px;font-weight:600;margin-bottom:4px;}
+.rcard-amount{font-size:13px;color:var(--green);font-weight:600;margin-bottom:3px;}
+.rcard-inv{font-size:12px;color:var(--muted);margin-bottom:6px;}
+.rcard-ref{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;}
+.rcard-ref-text{font-size:12px;color:var(--muted);line-height:1.6;word-break:break-all;margin-bottom:7px;}
+.btn-copy-sm{width:100%;background:var(--border2);border:none;color:var(--text);padding:7px;font-size:12px;font-weight:500;cursor:pointer;border-radius:5px;transition:all .15s;font-family:'Inter',sans-serif;}
+.btn-copy-sm:hover,.btn-copy-sm.ok{background:var(--green);color:#0a0a0b;}
+
+/* ── EDIT MODAL ── */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:flex-end;justify-content:center;padding:0;}
+@media(min-width:600px){.modal-ov{align-items:center;padding:20px;}}
+.modal-ov.open{display:flex;}
+.modal{background:var(--s1);border-radius:14px 14px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:20px 16px 30px;}
+@media(min-width:600px){.modal{border-radius:12px;}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.modal-title{font-size:16px;font-weight:700;}
+.btn-close-modal{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:2px 6px;}
+.modal-fields{display:flex;flex-direction:column;gap:11px;}
+.modal-actions{display:flex;gap:8px;margin-top:18px;}
+.btn-modal-save{flex:1;background:var(--green);color:#0a0a0b;border:none;padding:12px;font-size:14px;font-weight:600;cursor:pointer;border-radius:8px;transition:opacity .15s;font-family:'Inter',sans-serif;}
+.btn-modal-save:hover{opacity:.85;}
+.btn-modal-cancel{background:none;border:1.5px solid var(--border2);color:var(--muted);padding:12px 18px;font-size:14px;cursor:pointer;border-radius:8px;font-family:'Inter',sans-serif;}
+
+/* ── PDF PREVIEW MODAL ── */
+.pdf-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:600;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:16px;}
+.pdf-ov.open{display:flex;}
+.pdf-frame{width:100%;max-width:700px;height:70vh;border:none;border-radius:8px;background:#fff;}
+.pdf-btns{display:flex;gap:10px;}
+.btn-pdf-dl{background:var(--gold);color:#0a0a0b;border:none;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;border-radius:8px;font-family:'Inter',sans-serif;}
+.btn-pdf-close{background:var(--border2);color:var(--text);border:none;padding:10px 18px;font-size:13px;cursor:pointer;border-radius:8px;font-family:'Inter',sans-serif;}
+
+/* ── LIGHTBOX ── */
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:900;align-items:center;justify-content:center;}
+.lb.open{display:flex;}
+.lb img{max-width:95vw;max-height:88vh;object-fit:contain;border-radius:5px;}
+.lb-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:20px;cursor:pointer;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(12px);z-index:9999;background:var(--s1);border:1px solid var(--border2);color:var(--text);padding:10px 22px;font-size:13px;border-radius:9px;opacity:0;transition:all .22s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
+
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty .ei{font-size:38px;margin-bottom:12px;}
+.empty p{font-size:15px;font-weight:500;}
+.empty small{display:block;margin-top:6px;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Учёт <em>продаж</em></div>
+  <div class="topbtns">
+    <button class="tbtn active" id="tabNew" onclick="showTab('new')">+ Запись</button>
+    <button class="tbtn" id="tabArch" onclick="showTab('arch')">Архив</button>
+  </div>
+</div>
+
+<div class="mbar" id="mbar"></div>
+
+<div class="page">
+
+  <!-- NEW TAB -->
+  <div id="viewNew">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7;">
+      Загрузите скрины в два столбца. 1-й товар + 1-й банк = пара #1, и т.д. Затем заполните поля и скопируйте назначение в банк.
+    </p>
+
+    <div class="ucols">
+      <div class="ubox">
+        <div class="ubox-head">
+          <span class="ubox-lbl ic">🖼 Товары</span>
+          <span class="ubox-cnt" id="cntI">0</span>
+        </div>
+        <div class="dropzone" id="dzI" onclick="document.getElementById('fiI').click()"
+          ondrop="onDrop(event,'i')" ondragover="onDragover(event,'i')" ondragleave="onDragleave('i')">
+          <input type="file" id="fiI" accept="image/*" multiple onchange="onFiles('i',this.files)">
+          <div id="phI" class="dph"><span class="dph-icon">🗂</span><span class="dph-txt">Нажмите или<br>перетащите</span></div>
+          <div class="tgrid" id="tgI" style="display:none"></div>
+        </div>
+        <div class="addmore-row">
+          <button class="addmore" onclick="document.getElementById('fiI').click()">+ Ещё скрины</button>
+        </div>
+      </div>
+
+      <div class="ubox">
+        <div class="ubox-head">
+          <span class="ubox-lbl tc">🏦 Транзакции</span>
+          <span class="ubox-cnt" id="cntT">0</span>
+        </div>
+        <div class="dropzone" id="dzT" onclick="document.getElementById('fiT').click()"
+          ondrop="onDrop(event,'t')" ondragover="onDragover(event,'t')" ondragleave="onDragleave('t')">
+          <input type="file" id="fiT" accept="image/*" multiple onchange="onFiles('t',this.files)">
+          <div id="phT" class="dph"><span class="dph-icon">🏦</span><span class="dph-txt">Нажмите или<br>перетащите</span></div>
+          <div class="tgrid" id="tgT" style="display:none"></div>
+        </div>
+        <div class="addmore-row">
+          <button class="addmore" onclick="document.getElementById('fiT').click()">+ Ещё скрины</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pWrap" style="display:none">
+      <div class="pairs-hdr">
+        <div class="pairs-title" id="pTitle">Пары</div>
+        <button class="btn-green" onclick="saveAll()">✓ Сохранить всё</button>
+      </div>
+      <div id="pList"></div>
+    </div>
+  </div>
+
+  <!-- ARCHIVE TAB -->
+  <div id="viewArch" style="display:none">
+    <div id="archContent"></div>
+  </div>
+
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-ov" id="editModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">Редактировать запись</div>
+      <button class="btn-close-modal" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-fields">
+      <div>
+        <label class="pf-lbl">Платформа</label>
+        <div class="plattgl" style="max-width:220px">
+          <button id="ePlat_v" onclick="setEditPlat('vinted')">Vinted</button>
+          <button id="ePlat_vc" onclick="setEditPlat('vestiaire')">Vestiaire</button>
+        </div>
+      </div>
+      <div>
+        <label class="pf-lbl">Название позиции</label>
+        <input class="pf-inp" id="eTitle" type="text" placeholder="Louis Vuitton...">
+      </div>
+      <div class="pf-row">
+        <div>
+          <label class="pf-lbl">Сумма (€)</label>
+          <input class="pf-inp" id="eAmount" type="number" placeholder="" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="pf-lbl">Дата</label>
+          <input class="pf-inp" id="eDate" type="text" placeholder="дд/мм/гггг" maxlength="10" inputmode="numeric" oninput="fmtDate(this)">
+        </div>
+      </div>
+      <div>
+        <label class="pf-lbl">Номер инвойса</label>
+        <input class="pf-inp" id="eInvoice" type="text" placeholder="">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeEdit()">Отмена</button>
+      <button class="btn-modal-save" onclick="saveEdit()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF PREVIEW MODAL -->
+<div class="pdf-ov" id="pdfPreview">
+  <iframe class="pdf-frame" id="pdfFrame" src=""></iframe>
+  <div class="pdf-btns">
+    <button class="btn-pdf-dl" id="pdfDlBtn">↓ Скачать PDF</button>
+    <button class="btn-pdf-close" onclick="closePdfPreview()">Закрыть</button>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lb" id="lb" onclick="closeLb()">
+  <button class="lb-close">✕</button>
+  <img id="lbImg" src="" alt="">
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let records  = JSON.parse(localStorage.getItem('vv_rec') || '[]');
+let months   = JSON.parse(localStorage.getItem('vv_mon') || '[]');
+let curMonth = '';
+
+// Upload buffers
+let imgI = [];   // item screenshots (base64)
+let imgT = [];   // transaction screenshots (base64)
+// pairs[] mirrors one slot per Math.max(imgI, imgT)
+// each: {platform, title, amount, invoice, date, imgItem, imgTxn}
+let pairs = [];
+
+// Edit state
+let editIdx = -1;
+let editPlat = 'vestiaire';
+let currentPdfDoc = null;
+let currentPdfName = '';
+
+// ════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════
+function nowMonth(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(ym){
+  if(!ym) return '';
+  const [y,m]=ym.split('-');
+  const n=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  return n[parseInt(m)-1]+' '+y;
+}
+function saveMeta(){ localStorage.setItem('vv_mon', JSON.stringify(months)); }
+function saveRecs(){ localStorage.setItem('vv_rec', JSON.stringify(records)); }
+
+function initMonths(){
+  records.forEach(r=>{ if(!months.includes(r.month)) months.push(r.month); });
+  if(!months.includes(nowMonth())) months.push(nowMonth());
+  months.sort();
+  curMonth = months[months.length-1];
+  saveMeta();
+}
+
+function addNextMonth(){
+  const last=months[months.length-1];
+  const [y,m]=last.split('-').map(Number);
+  const next=m===12?(y+1)+'-01':y+'-'+String(m+1).padStart(2,'0');
+  if(!months.includes(next)){ months.push(next); months.sort(); saveMeta(); }
+  curMonth=next;
+  renderMbar();
+}
+
+// ════════════════════════════════════════
+//  MONTH BAR
+// ════════════════════════════════════════
+function renderMbar(){
+  const counts={};
+  records.forEach(r=>{ counts[r.month]=(counts[r.month]||0)+1; });
+  document.getElementById('mbar').innerHTML =
+    months.map(m=>
+      `<button class="mbtn ${m===curMonth?'active':''}" onclick="setMonth('${m}')">
+        ${monthLabel(m)}${counts[m]?' ('+counts[m]+')':''}
+      </button>`
+    ).join('')+
+    `<button class="mbtn-add" onclick="addNextMonth()">＋ месяц</button>`;
+}
+function setMonth(m){ curMonth=m; renderMbar(); }
+
+// ════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════
+function showTab(tab){
+  document.getElementById('viewNew').style.display  = tab==='new'  ? 'block':'none';
+  document.getElementById('viewArch').style.display = tab==='arch' ? 'block':'none';
+  document.getElementById('tabNew').classList.toggle('active',  tab==='new');
+  document.getElementById('tabArch').classList.toggle('active', tab==='arch');
+  if(tab==='arch') renderArchive();
+}
+
+// ════════════════════════════════════════
+//  FILE HANDLING
+// ════════════════════════════════════════
+function toB64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+async function onFiles(col, files){
+  const arr=col==='i'?imgI:imgT;
+  for(const f of files) arr.push(await toB64(f));
+  renderUploads();
+  syncPairs();
+}
+function onDrop(e,col){
+  e.preventDefault();
+  document.getElementById(col==='i'?'dzI':'dzT').classList.remove('dg');
+  const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+  if(files.length) onFiles(col,files);
+}
+function onDragover(e,col){ e.preventDefault(); document.getElementById(col==='i'?'dzI':'dzT').classList.add('dg'); }
+function onDragleave(col){ document.getElementById(col==='i'?'dzI':'dzT').classList.remove('dg'); }
+
+function removeUploadImg(col,idx){
+  readPairFields();
+  if(col==='i') imgI.splice(idx,1);
+  else imgT.splice(idx,1);
+  renderUploads();
+  syncPairs();
+}
+
+function renderUploads(){
+  renderThumbs('tgI','phI',imgI,'i');
+  renderThumbs('tgT','phT',imgT,'t');
+  document.getElementById('cntI').textContent=imgI.length;
+  document.getElementById('cntT').textContent=imgT.length;
+}
+function renderThumbs(gridId,phId,arr,col){
+  const ph=document.getElementById(phId);
+  const gr=document.getElementById(gridId);
+  ph.style.display=arr.length?'none':'flex';
+  gr.style.display=arr.length?'grid':'none';
+  gr.innerHTML=arr.map((b,i)=>
+    `<div class="titem">
+      <img src="${b}" onclick="openLb('${b}')">
+      <div class="tnum">${i+1}</div>
+      <button class="tdel" onclick="event.stopPropagation();removeUploadImg('${col}',${i})">✕</button>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+//  PAIRS
+// ════════════════════════════════════════
+
+// Read current input values back into pairs[]
+function readPairFields(){
+  pairs.forEach((p,i)=>{
+    const t=document.getElementById('p_t'+i);
+    const a=document.getElementById('p_a'+i);
+    const d=document.getElementById('p_d'+i);
+    const iv=document.getElementById('p_iv'+i);
+    if(t)  p.title   = t.value;
+    if(a)  p.amount  = a.value;
+    if(d)  p.date    = d.value;
+    if(iv) p.invoice = iv.value;
+  });
+}
+
+function syncPairs(){
+  readPairFields();
+  const n=Math.max(imgI.length, imgT.length);
+  // trim extras
+  while(pairs.length>n) pairs.pop();
+  // add new empty slots
+  while(pairs.length<n) pairs.push({platform:'vestiaire',title:'',amount:'',invoice:'',date:''});
+  // assign images
+  pairs.forEach((p,i)=>{ p.imgItem=imgI[i]||null; p.imgTxn=imgT[i]||null; });
+  renderPairs();
+}
+
+function buildRef(p){
+  if(!p.title && !p.invoice) return '';
+  let s='Payment for ';
+  if(p.title)   s+=p.title;
+  if(p.invoice) s+=' by the invoice # '+p.invoice;
+  if(p.date)    s+=' from '+p.date;
+  return s;
+}
+
+function renderPairs(){
+  const wrap=document.getElementById('pWrap');
+  if(!pairs.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  document.getElementById('pTitle').textContent='Пары ('+pairs.length+')';
+  document.getElementById('pList').innerHTML=pairs.map((p,i)=>{
+    const it=p.imgItem
+      ?`<div class="ptw"><div class="pthumb"><img src="${p.imgItem}" onclick="openLb('${p.imgItem}')"></div><div class="pthumb-lbl">Товар</div></div>`
+      :`<div class="ptw"><div class="pthumb"><div class="pthumb-empty">нет</div></div><div class="pthumb-lbl">Товар</div></div>`;
+    const tx=p.imgTxn
+      ?`<div class="ptw"><div class="pthumb"><img src="${p.imgTxn}" onclick="openLb('${p.imgTxn}')"></div><div class="pthumb-lbl">Банк</div></div>`
+      :`<div class="ptw"><div class="pthumb"><div class="pthumb-empty">нет</div></div><div class="pthumb-lbl">Банк</div></div>`;
+    const ref=buildRef(p);
+    return `<div class="pcard" id="pc${i}">
+      <div class="pcard-top">
+        <span class="pcard-num">#${i+1}</span>
+        <div class="plattgl">
+          <button data-pi="${i}" data-pl="vinted"  class="${p.platform==='vinted'?'von':''}">Vinted</button>
+          <button data-pi="${i}" data-pl="vestiaire" class="${p.platform==='vestiaire'?'vcon':''}">Vestiaire</button>
+        </div>
+        <button class="btn-remove" data-remove="${i}">✕ Удалить</button>
+      </div>
+      <div class="pcard-thumbs">${it}${tx}</div>
+      <div class="pfields">
+        <div>
+          <label class="pf-lbl">Название позиции</label>
+          <input class="pf-inp" id="p_t${i}" type="text" value=""
+            placeholder="Название товара (напр. Louis Vuitton Monogram...)"
+            oninput="liveRef(${i})">
+        </div>
+        <div class="pf-row">
+          <div>
+            <label class="pf-lbl">Сумма (€)</label>
+            <input class="pf-inp" id="p_a${i}" type="number" value=""
+              placeholder="0.00" step="0.01" min="0"
+              oninput="liveRef(${i})">
+          </div>
+          <div>
+            <label class="pf-lbl">Дата</label>
+            <input class="pf-inp" id="p_d${i}" type="text" value=""
+              placeholder="дд/мм/гггг" maxlength="10" inputmode="numeric"
+              oninput="fmtDate(this);liveRef(${i})">
+          </div>
+        </div>
+        <div>
+          <label class="pf-lbl">Номер инвойса</label>
+          <input class="pf-inp" id="p_iv${i}" type="text" value=""
+            placeholder="номер из назначения платежа"
+            oninput="liveRef(${i})">
+        </div>
+        <div>
+          <label class="pf-lbl">Назначение платежа — <span style="color:var(--muted)">копируй в банк</span></label>
+          <div class="refbox">
+            <div class="refval empty" id="rv${i}">заполни поля выше...</div>
+            <button class="btn-copy" id="cpb${i}" onclick="copyRef(${i})">Копировать</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Restore previously entered values
+  pairs.forEach((p,i)=>{
+    const t=document.getElementById('p_t'+i);
+    const a=document.getElementById('p_a'+i);
+    const d=document.getElementById('p_d'+i);
+    const iv=document.getElementById('p_iv'+i);
+    if(t && p.title)   t.value=p.title;
+    if(a && p.amount)  a.value=p.amount;
+    if(d && p.date)    d.value=p.date;
+    if(iv && p.invoice) iv.value=p.invoice;
+    updateRefDisplay(i);
+  });
+
+  // Event delegation for platform toggle and remove button
+  document.getElementById('pList').onclick=function(e){
+    // Platform toggle
+    const pb=e.target.closest('[data-pl]');
+    if(pb){
+      const i=parseInt(pb.dataset.pi);
+      readPairFields();
+      pairs[i].platform=pb.dataset.pl;
+      renderPairs();
+      return;
+    }
+    // Remove
+    const rb=e.target.closest('[data-remove]');
+    if(rb){
+      const i=parseInt(rb.dataset.remove);
+      readPairFields();
+      pairs.splice(i,1);
+      imgI.splice(i,1);
+      imgT.splice(i,1);
+      renderUploads();
+      syncPairs();
+      return;
+    }
+  };
+}
+
+function liveRef(i){
+  const t=document.getElementById('p_t'+i);
+  const a=document.getElementById('p_a'+i);
+  const d=document.getElementById('p_d'+i);
+  const iv=document.getElementById('p_iv'+i);
+  if(t)  pairs[i].title   = t.value;
+  if(a)  pairs[i].amount  = a.value;
+  if(d)  pairs[i].date    = d.value;
+  if(iv) pairs[i].invoice = iv.value;
+  updateRefDisplay(i);
+}
+function updateRefDisplay(i){
+  const el=document.getElementById('rv'+i);
+  if(!el) return;
+  const ref=buildRef(pairs[i]);
+  el.textContent=ref||'заполни поля выше...';
+  el.className='refval'+(ref?'':' empty');
+}
+
+function copyRef(i){
+  const ref=buildRef(pairs[i]);
+  if(!ref){ showToast('Сначала заполни поля','err'); return; }
+  doCopy(ref, document.getElementById('cpb'+i));
+}
+
+// ════════════════════════════════════════
+//  SAVE ALL
+// ════════════════════════════════════════
+function saveAll(){
+  if(!pairs.length){ showToast('Нет пар для сохранения','err'); return; }
+  readPairFields();
+  pairs.forEach(p=>{
+    records.push({
+      id: Date.now()+Math.random(),
+      month: curMonth,
+      platform: p.platform,
+      title: p.title,
+      amount: p.amount,
+      invoice: p.invoice,
+      date: p.date,
+      ref: buildRef(p),
+      imgItem: p.imgItem,
+      imgTxn: p.imgTxn,
+      createdAt: new Date().toISOString()
+    });
+  });
+  const saved=pairs.length;
+  saveRecs();
+  imgI=[]; imgT=[]; pairs=[];
+  renderUploads(); renderPairs(); renderMbar();
+  showToast('Сохранено '+saved+' записей ✓','ok');
+  showTab('arch');
+}
+
+// ════════════════════════════════════════
+//  ARCHIVE
+// ════════════════════════════════════════
+function renderArchive(){
+  const el=document.getElementById('archContent');
+  if(!records.length){
+    el.innerHTML='<div class="empty"><div class="ei">📂</div><p>Записей пока нет</p><small>Добавьте первые продажи</small></div>';
+    return;
+  }
+  const groups={};
+  records.forEach(r=>{ if(!groups[r.month]) groups[r.month]=[]; groups[r.month].push(r); });
+  const ms=Object.keys(groups).sort().reverse();
+  el.innerHTML=ms.map(m=>{
+    const items=groups[m];
+    const total=items.reduce((a,b)=>a+parseFloat(b.amount||0),0);
+    const rows=items.map(r=>{
+      const gi=records.indexOf(r);
+      const it=r.imgItem
+        ?`<div class="rthumb-w"><div class="rthumb"><img src="${r.imgItem}" onclick="openLb('${r.imgItem}')"></div><div class="rthumb-lbl">Товар</div></div>`
+        :`<div class="rthumb-w"><div class="rthumb" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted2)">нет</div><div class="rthumb-lbl">Товар</div></div>`;
+      const tx=r.imgTxn
+        ?`<div class="rthumb-w"><div class="rthumb"><img src="${r.imgTxn}" onclick="openLb('${r.imgTxn}')"></div><div class="rthumb-lbl">Банк</div></div>`
+        :`<div class="rthumb-w"><div class="rthumb" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted2)">нет</div><div class="rthumb-lbl">Банк</div></div>`;
+      const safeRef=(r.ref||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="rcard">
+        <div class="rcard-top">
+          <span class="rplat ${r.platform}">${r.platform==='vinted'?'Vinted':'Vestiaire'}</span>
+          <div class="rcard-actions">
+            <button class="btn-edit" onclick="openEdit(${gi})">✏️ Изменить</button>
+            <button class="btn-del-r" onclick="delRec(${gi})">✕</button>
+          </div>
+        </div>
+        <div class="rcard-thumbs">${it}${tx}</div>
+        <div>
+          <div class="rcard-title">${r.title||'—'}</div>
+          <div class="rcard-amount">${r.amount?'€ '+parseFloat(r.amount).toFixed(2):'—'}</div>
+          ${r.date?`<div class="rcard-inv">Дата: ${r.date}</div>`:''}
+          ${r.invoice?`<div class="rcard-inv">Invoice: ${r.invoice}</div>`:''}
+          ${r.ref?`<div class="rcard-ref">
+            <div class="rcard-ref-text">${r.ref}</div>
+            <button class="btn-copy-sm" onclick="doCopy('${safeRef}',this)">Копировать назначение</button>
+          </div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="mblock">
+      <div class="mblock-hdr">
+        <div class="mblock-left">
+          <span class="mblock-name">${monthLabel(m)}</span>
+          <span class="mblock-total">€ ${total.toFixed(2)}</span>
+          <span class="mblock-cnt">${items.length} поз.</span>
+        </div>
+        <button class="btn-pdf" onclick="showPDF('${m}')">👁 PDF</button>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+function delRec(idx){
+  if(!confirm('Удалить эту запись?')) return;
+  records.splice(idx,1); saveRecs(); renderArchive(); renderMbar();
+  showToast('Запись удалена','ok');
+}
+
+// ════════════════════════════════════════
+//  EDIT MODAL
+// ════════════════════════════════════════
+function openEdit(idx){
+  editIdx=idx;
+  const r=records[idx];
+  editPlat=r.platform||'vestiaire';
+  document.getElementById('eTitle').value=r.title||'';
+  document.getElementById('eAmount').value=r.amount||'';
+  document.getElementById('eDate').value=r.date||'';
+  document.getElementById('eInvoice').value=r.invoice||'';
+  refreshEditPlatBtns();
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEdit(){ document.getElementById('editModal').classList.remove('open'); editIdx=-1; }
+function setEditPlat(p){ editPlat=p; refreshEditPlatBtns(); }
+function refreshEditPlatBtns(){
+  document.getElementById('ePlat_v').className=editPlat==='vinted'?'von':'';
+  document.getElementById('ePlat_vc').className=editPlat==='vestiaire'?'vcon':'';
+}
+function saveEdit(){
+  if(editIdx<0) return;
+  const r=records[editIdx];
+  r.platform=editPlat;
+  r.title=document.getElementById('eTitle').value;
+  r.amount=document.getElementById('eAmount').value;
+  r.date=document.getElementById('eDate').value;
+  r.invoice=document.getElementById('eInvoice').value;
+  r.ref=buildRef(r);
+  saveRecs();
+  closeEdit();
+  renderArchive();
+  showToast('Запись обновлена ✓','ok');
+}
+
+// ════════════════════════════════════════
+//  PDF GENERATION
+// ════════════════════════════════════════
+async function buildPdfDoc(month){
+  const {jsPDF}=window.jspdf;
+  const items=records.filter(r=>r.month===month);
+  if(!items.length) return null;
+
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, H=297;
+
+  for(let i=0; i<items.length; i++){
+    if(i>0) doc.addPage();
+    const r=items[i];
+
+    // ── PAGE LAYOUT ──
+    // Top info band: 0..52mm
+    // Item image: 54..148mm  (~94mm tall)
+    // Transaction image: 152..246mm (~94mm tall)
+    // Bottom: ref box
+
+    // Background
+    doc.setFillColor(15,15,16);
+    doc.rect(0,0,W,H,'F');
+
+    // ── INFO BAND ──
+    doc.setFillColor(22,22,24);
+    doc.rect(0,0,W,50,'F');
+
+    // Colour stripe by platform
+    if(r.platform==='vinted') doc.setFillColor(61,214,208);
+    else doc.setFillColor(212,170,106);
+    doc.rect(0,0,4,50,'F');
+
+    // Platform label
+    if(r.platform==='vinted') doc.setTextColor(61,214,208);
+    else doc.setTextColor(212,170,106);
+    doc.setFontSize(8); doc.setFont(undefined,'bold');
+    doc.text(r.platform==='vinted'?'VINTED':'VESTIAIRE COLLECTIVE', 10, 10);
+
+    // Index + month
+    doc.setTextColor(120,115,110); doc.setFontSize(8); doc.setFont(undefined,'normal');
+    doc.text('Запись #'+(i+1)+' · '+monthLabel(month), W-10, 10, {align:'right'});
+
+    // Title
+    doc.setTextColor(235,230,220); doc.setFontSize(13); doc.setFont(undefined,'bold');
+    const title=(r.title||'—').substring(0,55);
+    doc.text(title, 10, 22);
+
+    // Amount
+    doc.setTextColor(93,222,138); doc.setFontSize(14); doc.setFont(undefined,'bold');
+    doc.text(r.amount?'EUR '+parseFloat(r.amount).toFixed(2):'—', 10, 33);
+
+    // Invoice & date
+    doc.setTextColor(120,115,110); doc.setFontSize(8); doc.setFont(undefined,'normal');
+    let meta=[];
+    if(r.invoice) meta.push('Invoice: '+r.invoice);
+    if(r.date)    meta.push('Дата: '+r.date);
+    if(meta.length) doc.text(meta.join('   '), 10, 42);
+
+    // ── ITEM IMAGE (top) ──
+    doc.setFillColor(30,30,35);
+    doc.rect(8, 54, W-16, 92, 'F');
+    doc.setDrawColor(50,50,55); doc.setLineWidth(0.3);
+    doc.rect(8, 54, W-16, 92, 'S');
+    // label
+    doc.setTextColor(100,95,90); doc.setFontSize(8);
+    doc.text('СКРИН ТОВАРА', 12, 61);
+    if(r.imgItem){
+      try{
+        const fmt=r.imgItem.startsWith('data:image/png')?'PNG':'JPEG';
+        // fit image within box: x=8, y=63, w=W-16=194, h=80
+        doc.addImage(r.imgItem, fmt, 10, 63, W-20, 80, undefined, 'FAST');
+      }catch(e){}
+    } else {
+      doc.setTextColor(60,55,50); doc.setFontSize(10);
+      doc.text('Скрин не загружен', W/2, 100, {align:'center'});
+    }
+
+    // ── TRANSACTION IMAGE (bottom) ──
+    doc.setFillColor(30,30,35);
+    doc.rect(8, 150, W-16, 92, 'F');
+    doc.setDrawColor(50,50,55);
+    doc.rect(8, 150, W-16, 92, 'S');
+    doc.setTextColor(100,95,90); doc.setFontSize(8);
+    doc.text('СКРИН ТРАНЗАКЦИИ (БАНК)', 12, 157);
+    if(r.imgTxn){
+      try{
+        const fmt=r.imgTxn.startsWith('data:image/png')?'PNG':'JPEG';
+        doc.addImage(r.imgTxn, fmt, 10, 159, W-20, 80, undefined, 'FAST');
+      }catch(e){}
+    } else {
+      doc.setTextColor(60,55,50); doc.setFontSize(10);
+      doc.text('Скрин не загружен', W/2, 196, {align:'center'});
+    }
+
+    // ── PAYMENT REFERENCE BOX ──
+    if(r.ref){
+      doc.setFillColor(12,12,14);
+      doc.rect(8, 246, W-16, 30, 'F');
+      doc.setDrawColor(40,40,44);
+      doc.rect(8, 246, W-16, 30, 'S');
+      doc.setTextColor(100,95,90); doc.setFontSize(7); doc.setFont(undefined,'bold');
+      doc.text('НАЗНАЧЕНИЕ ПЛАТЕЖА:', 12, 253);
+      doc.setFont(undefined,'normal');
+      doc.setTextColor(200,195,185); doc.setFontSize(8);
+      const lines=doc.splitTextToSize(r.ref, W-28);
+      doc.text(lines[0]||'', 12, 260);
+      if(lines[1]) doc.text(lines[1], 12, 267);
+    }
+
+    // Footer
+    doc.setTextColor(50,48,45); doc.setFontSize(7);
+    doc.text(monthLabel(month)+' · '+new Date().toLocaleDateString('ru-RU'), W/2, 292, {align:'center'});
+  }
+
+  return doc;
+}
+
+async function showPDF(month){
+  showToast('Создаю PDF...','');
+  try{
+    const doc=await buildPdfDoc(month);
+    if(!doc){ showToast('Нет записей','err'); return; }
+    currentPdfDoc=doc;
+    currentPdfName='Otchet_'+month.replace('-','_')+'.pdf';
+
+    // Revoke previous blob URL if any
+    const frame=document.getElementById('pdfFrame');
+    if(frame._blobUrl){ URL.revokeObjectURL(frame._blobUrl); }
+
+    const blob=doc.output('blob');
+    const blobUrl=URL.createObjectURL(blob);
+    frame._blobUrl=blobUrl;
+    frame.src=blobUrl;
+
+    document.getElementById('pdfDlBtn').onclick=()=>{ doc.save(currentPdfName); };
+    document.getElementById('pdfPreview').classList.add('open');
+    showToast('PDF готов — можно скачать','ok');
+  }catch(e){
+    showToast('Ошибка: '+e.message,'err');
+    console.error(e);
+  }
+}
+function closePdfPreview(){
+  document.getElementById('pdfPreview').classList.remove('open');
+  const frame=document.getElementById('pdfFrame');
+  if(frame._blobUrl){ URL.revokeObjectURL(frame._blobUrl); frame._blobUrl=null; }
+  frame.src='';
+}
+function closePdfPreview(){
+  document.getElementById('pdfPreview').classList.remove('open');
+  document.getElementById('pdfFrame').src='';
+}
+
+// ════════════════════════════════════════
+//  COPY HELPER
+// ════════════════════════════════════════
+function doCopy(text, btn){
+  const plain=typeof text==='string'?text:text;
+  const go=()=>{
+    if(btn){ btn.textContent='✓ Скопировано'; btn.classList.add('ok'); }
+    setTimeout(()=>{ if(btn){ btn.textContent=btn.textContent.includes('назначение')?'Копировать назначение':'Копировать'; btn.classList.remove('ok'); } }, 2000);
+  };
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(plain).then(go).catch(()=>{ fbCopy(plain); go(); });
+  } else { fbCopy(plain); go(); }
+}
+function fbCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta);
+}
+
+// ════════════════════════════════════════
+//  LIGHTBOX
+// ════════════════════════════════════════
+function openLb(src){ document.getElementById('lbImg').src=src; document.getElementById('lb').classList.add('open'); }
+function closeLb(){ document.getElementById('lb').classList.remove('open'); }
+document.getElementById('lb').addEventListener('click', closeLb);
+
+// ════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════
+function showToast(msg, type){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(type?' '+type:'');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>{ t.className='toast'; }, 3000);
+}
+
+// ════════════════════════════════════════
+//  DATE AUTO-FORMAT  dd/mm/yyyy
+// ════════════════════════════════════════
+function fmtDate(inp){
+  // Strip everything except digits
+  let v = inp.value.replace(/\D/g,'');
+  // Insert slashes at positions 2 and 4
+  if(v.length > 2)  v = v.slice(0,2) + '/' + v.slice(2);
+  if(v.length > 5)  v = v.slice(0,5) + '/' + v.slice(5);
+  // Max 10 chars: dd/mm/yyyy
+  inp.value = v.slice(0,10);
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+initMonths();
+renderMbar();
+renderUploads();
+</script>
+</body>
+</html>
