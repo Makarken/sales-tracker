@@ -171,26 +171,60 @@ async function runOCR(){
     $('ocrStatus').innerHTML='<span class="ok">Готово. Проверь поля руками, OCR иногда ошибается.</span>';
   }catch(e){ $('ocrStatus').innerHTML='<span class="err">Ошибка OCR: '+e.message+'</span>'; }
 }
-function cleanText(t){ return (t||'').replace(/[“”«»]/g,'"').replace(/\s+/g,' ').trim(); }
+function cleanText(t){
+  return (t||'')
+    .replace(/[“”«»]/g,'"')
+    .replace(/[‘’]/g,"'")
+    .replace(/\u00a0/g,' ')
+    .replace(/[ \t]+/g,' ')
+    .trim();
+}
+function oneLine(t){ return cleanText(t).replace(/\s+/g,' ').trim(); }
 function parseText(raw){
-  const one = cleanText(raw);
+  const text = cleanText(raw);
+  const one = oneLine(raw);
   const data = { platform: /vestiaire/i.test(one) ? 'Vestiaire' : 'Vinted' };
-  let m = one.match(/El pedido de\s+["“”](.+?)["“”]\s+ha\s+(?:finalizado|completado|terminado)/i);
-  if(!m) m = one.match(/pedido de\s+["“”](.+?)["“”]/i);
+
+  // Название берём между "El pedido de" и "ha finalizado/completado".
+  // OCR иногда теряет/ломает кавычки, поэтому НЕ режем только по кавычкам.
+  let m = text.match(/El\s+pedido\s+de\s+["']?\s*([\s\S]+?)\s*["']?\s+ha\s+(?:finalizado|completado|terminado)/i);
+  if(!m) m = one.match(/El\s+pedido\s+de\s+["']?\s*(.+?)\s*["']?\s+ha\s+(?:finalizado|completado|terminado)/i);
+  if(!m) m = one.match(/pedido\s+de\s+["']([^"']+)["']/i);
   if(!m) m = one.match(/Payment for\s+(.+?)(?:\s+by the invoice|\s+#|\s+from)/i);
   if(m) data.title = fixTitle(m[1]);
 
-  m = one.match(/N\.?\s*[°ºo]?\s*de\s+transacci[oó]n\s*:?\s*#?\s*(\d{7,})/i) || one.match(/transacci[oó]n\s*:?\s*#?\s*(\d{7,})/i) || one.match(/invoice\s*#?\s*(\d{7,})/i);
-  if(m) data.invoice = m[1];
+  // Номер транзакции. Частая ошибка OCR: символ # превращается в 4.
+  m = one.match(/N\.?\s*[°ºo]?\s*de\s+transacci[oó]n\s*:?\s*#?\s*([0-9\s]{7,})/i)
+   || one.match(/transacci[oó]n\s*:?\s*#?\s*([0-9\s]{7,})/i)
+   || one.match(/invoice\s*#?\s*([0-9\s]{7,})/i);
+  if(m) data.invoice = fixInvoice(m[1]);
 
-  m = one.match(/Fecha\s*:?\s*(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/i) || one.match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);
+  m = one.match(/Fecha\s*:?\s*(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/i)
+   || one.match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);
   if(m) data.date = String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0')+'/'+m[3];
 
-  m = one.match(/Transferencia\s+a\s+tu\s+saldo\s+Vinted\s*([\d\.,]+)\s*€/i) || one.match(/Precio\s+del\s+art[ií]culo\s*:?\s*([\d\.,]+)\s*€/i) || one.match(/(?:Total|Importe|Amount)\s*:?\s*([\d\.,]+)\s*€/i);
+  m = one.match(/Transferencia\s+a\s+tu\s+saldo\s+Vinted\s*([\d\.,]+)\s*€/i)
+   || one.match(/Precio\s+del\s+art[ií]culo\s*:?\s*([\d\.,]+)\s*€/i)
+   || one.match(/(?:Total|Importe|Amount)\s*:?\s*([\d\.,]+)\s*€/i);
   if(m) data.amount = normalizeAmount(m[1]);
   return data;
 }
-function fixTitle(s){ return (s||'').replace(/ha finalizado.*$/i,'').replace(/ha completado.*$/i,'').replace(/correctamente.*$/i,'').replace(/N\.?\s*[°ºo].*$/i,'').replace(/Precio.*$/i,'').trim().replace(/\s{2,}/g,' '); }
+function fixTitle(s){
+  return (s||'')
+    .replace(/["“”«»]/g,'')
+    .replace(/\s+ha\s+(finalizado|completado|terminado).*$/i,'')
+    .replace(/\s+correctamente\.?\s*$/i,'')
+    .replace(/N\.?\s*[°ºo].*$/i,'')
+    .replace(/Precio.*$/i,'')
+    .replace(/Transferencia.*$/i,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+function fixInvoice(s){
+  let n=(s||'').replace(/\D/g,'');
+  if(n.length===12 && n.startsWith('4')) n=n.slice(1);
+  return n;
+}
 function normalizeAmount(s){ return (s||'').replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',', '.').replace(/[^0-9.]/g,''); }
 function fmtDate(inp){ let v=inp.value.replace(/\D/g,''); if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2); if(v.length>5) v=v.slice(0,5)+'/'+v.slice(5); inp.value=v.slice(0,10); }
 function getRef(){
