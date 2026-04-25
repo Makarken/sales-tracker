@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v9</title>
+<title>Учёт ФОП v12</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root{--bg:#0f0f10;--s1:#171719;--s2:#202024;--s3:#29292f;--br:#34343b;--br2:#464650;--gold:#d4aa6a;--green:#5dde8a;--red:#e06060;--teal:#3dd6d0;--text:#f0ece4;--muted:#9b9690;--muted2:#67635f}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}html,body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px;min-height:100vh}.top{position:sticky;top:0;z-index:20;background:rgba(15,15,16,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--br);padding:14px 16px}.logo{font-size:22px;font-weight:800;letter-spacing:-.04em}.logo span{color:var(--gold)}.nav{display:flex;gap:8px;overflow:auto;margin-top:12px;padding-bottom:2px}.nav::-webkit-scrollbar{display:none}.btn{border:1px solid var(--br2);background:var(--s1);color:var(--muted);border-radius:11px;padding:10px 14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}.btn.active,.btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(212,170,106,.08)}.btn.green{background:var(--green);border-color:var(--green);color:#07100b}.btn.red{border-color:rgba(224,96,96,.5);color:var(--red)}.btn.small{padding:7px 10px;font-size:12px;border-radius:8px}.page{max-width:880px;margin:0 auto;padding:16px}.card{background:var(--s1);border:1px solid var(--br);border-radius:16px;padding:16px;margin-bottom:16px}.h{font-size:18px;font-weight:800;margin-bottom:8px}.sub{color:var(--muted);line-height:1.55}.drop{border:1.5px dashed var(--br2);background:var(--s2);border-radius:14px;min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:18px;cursor:pointer;overflow:hidden}.drop:hover,.drop.drag{border-color:var(--gold);color:var(--gold)}.drop img{max-width:100%;max-height:270px;border-radius:10px;object-fit:contain}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fields{display:grid;grid-template-columns:1.4fr .7fr .8fr;gap:10px;margin-top:12px}.fields.two{grid-template-columns:1fr 1fr}@media(max-width:720px){.grid,.fields,.fields.two{grid-template-columns:1fr}.page{padding:12px}.card{padding:14px;border-radius:14px}.btn{padding:9px 12px}.top{padding:12px}.logo{font-size:20px}}label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:6px}input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--br);color:var(--text);border-radius:11px;padding:12px;font:inherit;outline:none}textarea{min-height:84px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--gold)}.ref{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;background:var(--s2);border:1px solid var(--br);border-radius:14px;padding:12px;margin-top:12px}.reftext{white-space:pre-wrap;line-height:1.45;color:var(--text);word-break:break-word}@media(max-width:520px){.ref{grid-template-columns:1fr}.ref .btn{width:100%}}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.status{font-size:13px;color:var(--muted);margin-top:8px;min-height:20px}.ok{color:var(--green)}.err{color:var(--red)}.warn{color:var(--gold)}.rec{background:var(--s1);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px}.recTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.recTitle{font-weight:800;font-size:15px}.pill{display:inline-flex;border:1px solid var(--br2);border-radius:99px;padding:4px 8px;color:var(--muted);font-size:12px;margin-top:5px}.money{color:var(--green);font-weight:800}.muted{color:var(--muted)}.imgs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.imgs img{width:100%;height:130px;object-fit:cover;border-radius:9px;border:1px solid var(--br);cursor:pointer;background:var(--s2)}.imgs .imgPh{width:100%;height:130px;border-radius:9px;border:1px dashed var(--br);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;background:var(--s2)}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:60;align-items:center;justify-content:center;padding:16px}.modal.open{display:flex}.modal img{max-width:96vw;max-height:88vh;border-radius:8px}.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.2s;background:var(--s1);border:1px solid var(--br2);padding:12px 18px;border-radius:12px;z-index:100;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,.4);pointer-events:none}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.mini{font-size:12px;color:var(--muted);line-height:1.5}.split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.monthbar{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.monthbar::-webkit-scrollbar{display:none}.raw{display:none;margin-top:10px;background:#101014;color:#bdb7b1;border:1px solid var(--br);border-radius:10px;padding:10px;white-space:pre-wrap;font-size:12px;max-height:240px;overflow:auto}.settingsLine{display:grid;grid-template-columns:1fr auto;gap:8px}@media(max-width:600px){.settingsLine{grid-template-columns:1fr}}.sumline{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}@media(max-width:600px){.sumline{grid-template-columns:1fr}.imgs{grid-template-columns:1fr}}.sumcard{background:var(--s2);border:1px solid var(--br);border-radius:13px;padding:12px}.sumcard b{display:block;font-size:18px}.sumcard span{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}html,body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:14px;min-height:100vh}.top{position:sticky;top:0;z-index:20;background:rgba(15,15,16,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--br);padding:14px 16px}.logo{font-size:22px;font-weight:800;letter-spacing:-.04em}.logo span{color:var(--gold)}.nav{display:flex;gap:8px;overflow:auto;margin-top:12px;padding-bottom:2px}.nav::-webkit-scrollbar{display:none}.btn{border:1px solid var(--br2);background:var(--s1);color:var(--muted);border-radius:11px;padding:10px 14px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}.btn.active,.btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(212,170,106,.08)}.btn.green{background:var(--green);border-color:var(--green);color:#07100b}.btn.red{border-color:rgba(224,96,96,.5);color:var(--red)}.btn.small{padding:7px 10px;font-size:12px;border-radius:8px}.page{max-width:880px;margin:0 auto;padding:16px}.card{background:var(--s1);border:1px solid var(--br);border-radius:16px;padding:16px;margin-bottom:16px}.h{font-size:18px;font-weight:800;margin-bottom:8px}.sub{color:var(--muted);line-height:1.55}.drop{border:1.5px dashed var(--br2);background:var(--s2);border-radius:14px;min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:18px;cursor:pointer;overflow:hidden}.drop:hover,.drop.drag{border-color:var(--gold);color:var(--gold)}.drop img{max-width:100%;max-height:270px;border-radius:10px;object-fit:contain}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fields{display:grid;grid-template-columns:1.4fr .7fr .8fr;gap:10px;margin-top:12px}.fields.two{grid-template-columns:1fr 1fr}@media(max-width:720px){.grid,.fields,.fields.two{grid-template-columns:1fr}.page{padding:12px}.card{padding:14px;border-radius:14px}.btn{padding:9px 12px}.top{padding:12px}.logo{font-size:20px}}label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:6px}input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--br);color:var(--text);border-radius:11px;padding:12px;font:inherit;outline:none}textarea{min-height:84px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--gold)}.ref{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;background:var(--s2);border:1px solid var(--br);border-radius:14px;padding:12px;margin-top:12px}.reftext{white-space:pre-wrap;line-height:1.45;color:var(--text);word-break:break-word}@media(max-width:520px){.ref{grid-template-columns:1fr}.ref .btn{width:100%}}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.status{font-size:13px;color:var(--muted);margin-top:8px;min-height:20px}.ok{color:var(--green)}.err{color:var(--red)}.warn{color:var(--gold)}.rec{background:var(--s1);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px}.recTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.recTitle{font-weight:800;font-size:15px}.pill{display:inline-flex;border:1px solid var(--br2);border-radius:99px;padding:4px 8px;color:var(--muted);font-size:12px;margin-top:5px}.money{color:var(--green);font-weight:800}.muted{color:var(--muted)}.imgs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.imgs img{width:100%;height:130px;object-fit:cover;border-radius:9px;border:1px solid var(--br);cursor:pointer;background:var(--s2)}.imgs .imgPh{width:100%;height:130px;border-radius:9px;border:1px dashed var(--br);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;background:var(--s2);text-align:center;padding:6px}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:60;align-items:center;justify-content:center;padding:16px}.modal.open{display:flex}.modal img{max-width:96vw;max-height:88vh;border-radius:8px}.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;transition:.2s;background:var(--s1);border:1px solid var(--br2);padding:12px 18px;border-radius:12px;z-index:100;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,.4);pointer-events:none}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.mini{font-size:12px;color:var(--muted);line-height:1.5}.split{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.monthbar{display:flex;gap:8px;overflow:auto;margin-bottom:14px}.monthbar::-webkit-scrollbar{display:none}.raw{display:none;margin-top:10px;background:#101014;color:#bdb7b1;border:1px solid var(--br);border-radius:10px;padding:10px;white-space:pre-wrap;font-size:12px;max-height:240px;overflow:auto}.settingsLine{display:grid;grid-template-columns:1fr auto;gap:8px}@media(max-width:600px){.settingsLine{grid-template-columns:1fr}}.sumline{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}@media(max-width:600px){.sumline{grid-template-columns:1fr}.imgs{grid-template-columns:1fr}}.sumcard{background:var(--s2);border:1px solid var(--br);border-radius:13px;padding:12px}.sumcard b{display:block;font-size:18px}.sumcard span{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted2);border-top-color:var(--gold);border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:middle;margin-right:6px}@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v10</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v12</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -29,7 +29,7 @@
   <section id="viewNew">
     <div class="card">
       <div class="h">1. Загрузи скрин Vinted / Vestiaire</div>
-      <div class="sub">Сайт берёт название, сумму, дату и номер транзакции. Если OCR ошибся — просто поправь поля руками. Назначение платежа соберётся автоматически.</div>
+      <div class="sub">Сайт берёт название, сумму, дату и номер транзакции. Если OCR ошибся — поправь поля руками.</div>
       <div class="grid" style="margin-top:14px">
         <div>
           <label>Скрин продажи / платформы</label>
@@ -60,12 +60,12 @@
     <div class="card">
       <div class="h">2. Проверь данные</div>
       <div class="fields">
-        <div><label>Название</label><input id="title" placeholder="Louis Vuitton Monogram Papillon 30" oninput="updateRef()"></div>
-        <div><label>Сумма €</label><input id="amount" placeholder="300,00" inputmode="decimal" oninput="updateRef()"></div>
-        <div><label>Дата</label><input id="date" placeholder="20/04/2026" inputmode="numeric" oninput="fmtDate(this);updateRef()"></div>
+        <div><label>Название</label><input id="title" placeholder="Louis Vuitton Monogram Papillon 30" oninput="onFormInput()"></div>
+        <div><label>Сумма €</label><input id="amount" placeholder="300,00" inputmode="decimal" oninput="onFormInput()"></div>
+        <div><label>Дата</label><input id="date" placeholder="20/04/2026" inputmode="numeric" oninput="fmtDate(this);onFormInput()"></div>
       </div>
       <div class="fields two">
-        <div><label>Инвойс / транзакция</label><input id="invoice" placeholder="18978127676" oninput="updateRef()"></div>
+        <div><label>Инвойс / транзакция</label><input id="invoice" placeholder="18978127676" oninput="onFormInput()"></div>
         <div><label>Платформа</label><select id="platform" onchange="updateRef()"><option value="Vinted">Vinted</option><option value="Vestiaire">Vestiaire</option><option value="Other">Другое</option></select></div>
       </div>
       <div class="fields two">
@@ -87,7 +87,16 @@
 
   <section id="viewArch" style="display:none">
     <div class="card">
-      <div class="split"><div><div class="h">Архив</div><div class="sub">Архив грузится из Google Таблицы. Картинки приватные на Drive — подгружаются по запросу при открытии или построении PDF.</div></div><div class="actions"><button class="btn" onclick="loadSheetArchive(true)">↻ Обновить из таблицы</button><button class="btn" onclick="downloadCSV()">CSV</button><button class="btn" onclick="makeMonthPDF()">PDF месяца</button><button class="btn" onclick="syncLocalRecords()">⬆️ Выгрузить локальные</button></div></div>
+      <div class="split">
+        <div><div class="h">Архив</div><div class="sub">Архив грузится из Google Таблицы. Фото остаются локально на устройстве, чтобы отправка не зависала.</div></div>
+        <div class="actions">
+          <button class="btn" onclick="loadSheetArchive(true)">↻ Обновить</button>
+          <button class="btn" onclick="downloadCSV()">CSV</button>
+          <button class="btn" onclick="makeMonthPDF()">PDF месяца</button>
+          <button class="btn" onclick="syncLocalRecords()">⬆️ Выгрузить локальные</button>
+          <button class="btn red" onclick="clearLocalAfterConfirm()">🧹 Очистить локально</button>
+        </div>
+      </div>
       <div class="status" id="archiveStatus"></div>
     </div>
     <div class="sumline" id="summary"></div>
@@ -98,7 +107,7 @@
   <section id="viewSet" style="display:none">
     <div class="card">
       <div class="h">Настройки Google Таблицы</div>
-      <div class="sub">URL Apps Script уже вставлен. Если развернёшь новый скрипт — замени ссылку здесь и сохрани.</div>
+      <div class="sub">URL Apps Script уже вставлен. Если развернёшь новый скрипт — замени ссылку и сохрани.</div>
       <div class="settingsLine" style="margin-top:12px">
         <input id="endpoint" placeholder="Apps Script Web App URL">
         <button class="btn green" onclick="saveSettings()">Сохранить</button>
@@ -107,12 +116,15 @@
         <label>Токен (опционально, должен совпадать с SHARED_TOKEN в Code.gs)</label>
         <input id="token" placeholder="оставь пустым, если в Code.gs SHARED_TOKEN тоже пустой">
       </div>
-      <div class="actions"><button class="btn" onclick="testSheet()">Проверить связь</button></div>
+      <div class="actions">
+        <button class="btn" onclick="testSheet()">Проверить связь</button>
+        <button class="btn" onclick="clearImageCache()">Очистить кэш картинок</button>
+      </div>
       <div class="status" id="setStatus"></div>
     </div>
     <div class="card">
       <div class="h">Как пользоваться</div>
-      <div class="mini">1) Загрузи скрин Vinted/Vestiaire. 2) Нажми "Распознать скрин". 3) Проверь поля. 4) Скопируй назначение и вставь в банк. 5) Добавь фото позиции и сохрани. 6) В конце месяца сделай PDF/CSV.</div>
+      <div class="mini">1) Загрузи скрин Vinted/Vestiaire. 2) Нажми «Распознать скрин». 3) Проверь поля. 4) Скопируй назначение и вставь в банк. 5) Добавь фото позиции и сохрани. 6) В конце месяца — PDF/CSV.</div>
     </div>
   </section>
 </div>
@@ -121,17 +133,21 @@
 <div class="toast" id="toast"></div>
 
 <script>
+'use strict';
 const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw7Ik5EA8sVwujdsHOvrXQk2A_HaKyVAmREPi6e7hVf0kfR5UZhcvD6DuPebfXAXcFR/exec';
 const ARCHIVE_TTL_MS = 60 * 1000;
+const IMG_CACHE_KEY = 'fop_img_cache_v1';
+const IMG_CACHE_MAX_BYTES = 4 * 1024 * 1024; // 4MB лимит на кэш картинок в localStorage
 
 let records = JSON.parse(localStorage.getItem('fop_records_v3') || '[]');
 let sheetRecords = [];
-let sheetRecordsByMonth = {};       // { 'all': [...], '2026-04': [...] }
+let sheetRecordsByMonth = {};
 let archiveLoadedFromSheet = false;
 let archiveLoading = false;
 let archiveCacheTime = 0;
-let archiveCacheKey = '';            // что именно лежит в sheetRecords
-let imageCache = {};                 // fileId -> dataUrl (in memory)
+let archiveCacheKey = '';
+let imageCache = loadImageCache();
+let inFlightImages = {};
 
 let draft = { platformImage:'', itemImage:'', rawText:'' };
 let selectedMonth = 'all';
@@ -139,8 +155,63 @@ let settings = JSON.parse(localStorage.getItem('fop_settings_v3') || '{}');
 if (!settings.endpoint) settings.endpoint = DEFAULT_ENDPOINT;
 if (!settings.token) settings.token = '';
 
+let lazyObserver = null;
+
 function $(id){ return document.getElementById(id); }
 function toast(msg,type=''){ const t=$('toast'); t.textContent=msg; t.className='toast show'; if(type)t.classList.add(type); clearTimeout(t._x); t._x=setTimeout(()=>t.className='toast',2600); }
+
+// ===== Кэш картинок в localStorage с LRU =====
+function loadImageCache(){
+  try {
+    const raw = localStorage.getItem(IMG_CACHE_KEY);
+    if(!raw) return { items:{}, order:[] };
+    const obj = JSON.parse(raw);
+    return obj && obj.items ? obj : { items:{}, order:[] };
+  } catch(e){ return { items:{}, order:[] }; }
+}
+function saveImageCache(){
+  try {
+    localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(imageCache));
+  } catch(e){
+    // переполнение — выкидываем половину старых и пробуем снова
+    const half = Math.floor(imageCache.order.length / 2);
+    for(let i=0; i<half; i++){
+      const k = imageCache.order.shift();
+      delete imageCache.items[k];
+    }
+    try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(imageCache)); } catch(e2){}
+  }
+}
+function imgCacheGet(id){
+  if(!imageCache.items[id]) return null;
+  // bump в LRU
+  const idx = imageCache.order.indexOf(id);
+  if(idx > -1){ imageCache.order.splice(idx,1); imageCache.order.push(id); }
+  return imageCache.items[id];
+}
+function imgCacheSet(id, dataUrl){
+  if(!dataUrl || dataUrl.length > 1.5 * 1024 * 1024) return; // >1.5MB не кэшируем
+  imageCache.items[id] = dataUrl;
+  const idx = imageCache.order.indexOf(id);
+  if(idx > -1) imageCache.order.splice(idx,1);
+  imageCache.order.push(id);
+  // выселяем по размеру
+  let totalBytes = 0;
+  for(const k of imageCache.order) totalBytes += (imageCache.items[k] || '').length;
+  while(totalBytes > IMG_CACHE_MAX_BYTES && imageCache.order.length > 1){
+    const oldest = imageCache.order.shift();
+    totalBytes -= (imageCache.items[oldest] || '').length;
+    delete imageCache.items[oldest];
+  }
+  saveImageCache();
+}
+function clearImageCache(){
+  imageCache = { items:{}, order:[] };
+  try{ localStorage.removeItem(IMG_CACHE_KEY); }catch(e){}
+  toast('Кэш картинок очищен ✓','ok');
+}
+
+// ===== Навигация =====
 function tab(name){
   $('viewNew').style.display = name==='new' ? 'block' : 'none';
   $('viewArch').style.display = name==='arch' ? 'block' : 'none';
@@ -154,7 +225,7 @@ function tab(name){
   }
   if(name==='set'){ $('endpoint').value = settings.endpoint; $('token').value = settings.token || ''; }
 }
-function saveLocal(){ localStorage.setItem('fop_records_v3', JSON.stringify(records)); }
+function saveLocal(){ try{ localStorage.setItem('fop_records_v3', JSON.stringify(records)); }catch(e){ toast('Локальное хранилище переполнено','err'); } }
 function saveSettings(){
   settings.endpoint = $('endpoint').value.trim() || DEFAULT_ENDPOINT;
   settings.token = $('token').value.trim();
@@ -163,6 +234,7 @@ function saveSettings(){
   $('setStatus').innerHTML='<span class="ok">Сохранено ✓</span>';
 }
 
+// ===== Drag & drop / image loading =====
 function dragOver(e,el){ e.preventDefault(); el.classList.add('drag'); }
 function dragLeave(el){ el.classList.remove('drag'); }
 function dropFile(e,type){ e.preventDefault(); e.currentTarget.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) loadImage(f,type); }
@@ -170,7 +242,7 @@ function pickFile(inp,type){ const f=inp.files[0]; if(f) loadImage(f,type); inp.
 function loadImage(file,type){
   compressImage(file,1600,.86).then(src=>{
     draft[type+'Image']=src; showImage(type,src);
-    if(type==='platform') $('ocrStatus').innerHTML='<span class="warn">Скрин загружен. Нажми "Распознать скрин".</span>';
+    if(type==='platform') $('ocrStatus').innerHTML='<span class="warn">Скрин загружен. Нажми «Распознать скрин».</span>';
   }).catch(e=>toast('Ошибка фото: '+e.message,'err'));
 }
 function showImage(type,src){ $(type+'Img').src=src; $(type+'Img').style.display='block'; $(type+'Ph').style.display='none'; $(type+'Img').onclick=(e)=>{ e.stopPropagation(); openImg(src); }; }
@@ -179,6 +251,7 @@ function compressImage(file,maxW=1600,quality=.86){
 }
 function openImg(src){ $('modalImg').src=src; $('modal').classList.add('open'); }
 
+// ===== OCR =====
 async function runOCR(){
   if(!draft.platformImage){ toast('Сначала загрузи скрин','err'); return; }
   $('ocrStatus').textContent='Распознаю текст... может занять 10–30 секунд';
@@ -193,7 +266,7 @@ async function runOCR(){
     if(data.invoice) $('invoice').value = data.invoice;
     if(data.platform) $('platform').value = data.platform;
     updateRef();
-    $('ocrStatus').innerHTML='<span class="ok">Готово. Проверь поля руками, OCR иногда ошибается.</span>';
+    $('ocrStatus').innerHTML='<span class="ok">Готово. Проверь поля.</span>';
   }catch(e){ $('ocrStatus').innerHTML='<span class="err">Ошибка OCR: '+e.message+'</span>'; }
 }
 function cleanText(t){
@@ -232,7 +305,7 @@ function parseText(raw){
   return data;
 }
 function fixTitle(s){
-  let t = (s||'')
+  return (s||'')
     .replace(/["\u201c\u201d\u00ab\u00bb]/g,'')
     .replace(/\s+ha\s+(finalizado|completado|terminado).*$/i,'')
     .replace(/\s+correctamente\.?\s*$/i,'')
@@ -241,7 +314,6 @@ function fixTitle(s){
     .replace(/(?:^|\n)\s*Transferencia.*$/im,'')
     .replace(/\s{2,}/g,' ')
     .trim();
-  return t;
 }
 function fixInvoice(s){
   let n = (s||'').replace(/\D/g,'');
@@ -250,14 +322,23 @@ function fixInvoice(s){
 }
 function normalizeAmount(s){ return (s||'').replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',', '.').replace(/[^0-9.]/g,''); }
 function fmtDate(inp){ let v=inp.value.replace(/\D/g,''); if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2); if(v.length>5) v=v.slice(0,5)+'/'+v.slice(5); inp.value=v.slice(0,10); }
+
 function getRef(){
-  const title = $('title').value.trim(); const inv = $('invoice').value.trim(); const date = $('date').value.trim();
+  const title = $('title').value.trim();
+  const inv = $('invoice').value.trim();
+  const date = $('date').value.trim();
   let s = 'Payment for ' + (title || '[item]');
   if(inv) s += ' by the invoice #' + inv;
   if(date) s += ' from ' + date;
   return s;
 }
 function updateRef(){ $('refText').textContent = getRef(); }
+// Дебаунс: пересобираем reference раз в 150мс, а не на каждый символ
+let refTimer = null;
+function onFormInput(){
+  if(refTimer) cancelAnimationFrame(refTimer);
+  refTimer = requestAnimationFrame(()=>{ updateRef(); refTimer=null; });
+}
 function copyRef(){ const text=getRef(); navigator.clipboard.writeText(text).then(()=>toast('Назначение скопировано ✓','ok')).catch(()=>{ fallbackCopy(text); toast('Скопировано ✓','ok'); }); }
 function fallbackCopy(text){ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
 function toggleRaw(){ const el=$('rawText'); el.style.display = el.style.display==='block' ? 'none' : 'block'; }
@@ -300,33 +381,65 @@ async function saveRecord(sendToSheet){
   if(sendToSheet){
     const ok = await sendRecordToSheet(rec, true);
     if(ok){ setTimeout(()=>{ resetForm(); tab('arch'); }, 700); }
-    else { $('saveStatus').innerHTML='<span class="err">Запись осталась локально. Открой архив на этом же телефоне и нажми «Выгрузить локальные» после проверки Apps Script.</span>'; }
+    else { $('saveStatus').innerHTML='<span class="err">Запись осталась локально. Проверь связь и нажми «Выгрузить локальные» в архиве.</span>'; }
   } else {
     setTimeout(()=>{ resetForm(); tab('arch'); }, 600);
   }
 }
+function sheetPayload(rec){
+  return {
+    local_id: rec.local_id,
+    created_at: rec.created_at,
+    month: rec.month,
+    date: rec.date,
+    platform: rec.platform,
+    title: rec.title,
+    amount: rec.amount,
+    currency: rec.currency,
+    bank: rec.bank || '',
+    invoice: rec.invoice,
+    reference: rec.reference,
+    status: rec.status,
+    comment: rec.comment,
+    project: rec.project || 'FOP',
+    platform_shot: rec.platformImage ? 'local_only' : '',
+    bank_shot: '',
+    extra_shots: rec.itemImage ? 'local_only' : ''
+  };
+}
 async function sendRecordToSheet(rec, verify){
-  const payload = Object.assign({}, rec);
+  const payload = sheetPayload(rec);
   try{
+    $('saveStatus').innerHTML='<span class="warn"><span class="spin"></span>Отправляю в Google Таблицу...</span>';
     await fetch(settings.endpoint, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'upsertSale', payload, token: settings.token||'' }) });
     if(verify){
-      $('saveStatus').innerHTML='<span class="warn">Запрос отправлен. Проверяю, появилась ли запись в Google Таблице...</span>';
-      const found = await verifyInSheet(rec.local_id, 5);
-      if(!found){ toast('Не вижу запись в таблице','err'); return false; }
+      $('saveStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю строку в таблице...</span>';
+      const found = await verifyInSheet(rec.local_id);
+      if(!found){ toast('Пока не вижу запись в таблице','err'); return false; }
     }
-    rec.status='Отправлено в таблицу'; rec._sheet_ok = true; rec._sheet_at = new Date().toISOString(); saveLocal();
-    $('saveStatus').innerHTML='<span class="ok">Запись реально найдена в Google Таблице ✓</span>'; toast('Отправлено в таблицу ✓','ok');
+    rec.status='Отправлено в таблицу';
+    rec._sheet_ok = true;
+    rec._sheet_at = new Date().toISOString();
+    saveLocal();
+    $('saveStatus').innerHTML='<span class="ok">Готово: запись в Google Таблице ✓</span>';
+    toast('Отправлено в таблицу ✓','ok');
     archiveCacheTime = 0;
-    setTimeout(()=>loadSheetArchive(true),800);
+    setTimeout(()=>loadSheetArchive(true),500);
     return true;
-  }catch(e){ $('saveStatus').innerHTML='<span class="err">Не отправилось: '+e.message+'</span>'; toast('Ошибка отправки','err'); return false; }
+  }catch(e){
+    $('saveStatus').innerHTML='<span class="err">Не отправилось: '+e.message+'</span>';
+    toast('Ошибка отправки','err');
+    return false;
+  }
 }
-async function verifyInSheet(localId, attempts){
-  for(let a=0; a<attempts; a++){
-    await new Promise(r=>setTimeout(r, 900 + a*500));
+async function verifyInSheet(localId){
+  // 3 попытки: 0с, 1.5с, 3.5с — итого до 5 секунд против 30 в v11
+  const delays = [0, 1500, 2000];
+  for(let a=0; a<delays.length; a++){
+    if(delays[a]) await new Promise(r=>setTimeout(r, delays[a]));
     try{
-      const data = await jsonpRequest({ action:'listSales', local_id: localId }, 12000);
-      const arr = Array.isArray(data.records) ? data.records : [];
+      const data = await jsonpRequest({ action:'listSales', local_id: localId }, 8000);
+      const arr = Array.isArray(data && data.records) ? data.records : [];
       if(data && data.ok && arr.some(x => String(x.local_id||'') === String(localId))) return true;
     }catch(e){}
   }
@@ -336,26 +449,45 @@ async function syncLocalRecords(){
   if(!records.length){ toast('На этом устройстве нет локальных записей','err'); return; }
   const candidates = records.filter(r => !r._sheet_ok);
   if(!candidates.length){ toast('Все локальные уже отмечены как отправленные','ok'); return; }
-  if(!confirm('Выгрузить в Google Таблицу локальные записи с этого устройства?\n\nБудет отправлено: '+candidates.length)) return;
-  const st=$('archiveStatus'); if(st) st.innerHTML='<span class="warn">Выгружаю локальные записи: 0 / '+candidates.length+'</span>';
-  let ok=0, fail=0;
-  for(let i=0;i<candidates.length;i++){
-    if(st) st.innerHTML='<span class="warn">Выгружаю локальные записи: '+i+' / '+candidates.length+'</span>';
-    const sent = await sendRecordToSheet(candidates[i], true);
-    if(sent) ok++; else fail++;
+  if(!confirm('Выгрузить в Google Таблицу '+candidates.length+' записей одним запросом?')) return;
+  const st=$('archiveStatus');
+  if(st) st.innerHTML='<span class="warn"><span class="spin"></span>Выгружаю '+candidates.length+' записей одним запросом...</span>';
+  try{
+    const payload = candidates.map(sheetPayload);
+    await fetch(settings.endpoint, {
+      method:'POST', mode:'no-cors',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'bulkUpsertSales', payload, token: settings.token||'' })
+    });
+    // верификация: проверяем последнюю запись
+    if(st) st.innerHTML='<span class="warn"><span class="spin"></span>Проверяю в таблице...</span>';
+    await new Promise(r=>setTimeout(r, 2000));
+    const lastId = candidates[candidates.length-1].local_id;
+    const found = await verifyInSheet(lastId);
+    if(found){
+      candidates.forEach(c => { c._sheet_ok = true; c._sheet_at = new Date().toISOString(); c.status='Отправлено в таблицу'; });
+      saveLocal();
+      if(st) st.innerHTML='<span class="ok">Выгружено: '+candidates.length+' записей ✓</span>';
+      toast('Выгружено '+candidates.length+' ✓','ok');
+    } else {
+      if(st) st.innerHTML='<span class="err">Запрос отправлен, но проверка не нашла последнюю запись. Проверь таблицу вручную.</span>';
+    }
+    archiveCacheTime = 0;
+    await loadSheetArchive(true);
+  }catch(e){
+    if(st) st.innerHTML='<span class="err">Ошибка выгрузки: '+escapeHtml(e.message)+'</span>';
+    toast('Ошибка','err');
   }
-  if(st) st.innerHTML='<span class="'+(fail?'warn':'ok')+'">Выгрузка завершена. Успешно: '+ok+', ошибок: '+fail+'.</span>';
-  archiveCacheTime = 0;
-  await loadSheetArchive(true);
 }
 async function testSheet(){
-  $('setStatus').textContent='Проверяю...';
+  $('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю...</span>';
   try{
     const data = await jsonpRequest({action:'ping'}, 12000);
     if(data && data.ok) $('setStatus').innerHTML='<span class="ok">Связь есть: '+escapeHtml(data.message||'OK')+'</span>';
     else $('setStatus').innerHTML='<span class="err">Ответ есть, но ошибка: '+escapeHtml((data&&data.error)||'unknown')+'</span>';
   } catch(e){ $('setStatus').innerHTML='<span class="err">Ошибка: '+escapeHtml(e.message)+'</span>'; }
 }
+
 function activeRecords(){ return archiveLoadedFromSheet ? sheetRecords : records; }
 function getMonths(){ const set=new Set(activeRecords().map(r=>r.month||monthFromDate(r.date))); return Array.from(set).filter(Boolean).sort().reverse(); }
 function monthLabel(ym){ if(ym==='all') return 'Все'; const names=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']; const [y,m]=(ym||'').split('-'); return (names[Number(m)-1]||ym)+' '+y; }
@@ -376,10 +508,8 @@ function normalizeSheetRecord(r){
   out.reference = out.reference || out.Reference || out['Назначение'] || buildReferenceFromRecord(out);
   out.status = out.status || out.Status || out['Статус'] || '';
   out.comment = out.comment || out.Comment || out['Комментарий'] || '';
-  // platformImage/itemImage могут быть: data:image/..., http(s)://..., либо 'private:<fileId>'
   out.platformImage = out.platformImage || out.platform_image_url || out.platform_shot || '';
   out.itemImage = out.itemImage || out.item_image_url || out.extra_shots || '';
-  // если есть приватный id, формируем маркер
   if(!out.platformImage && out.platform_image_id) out.platformImage = 'private:'+out.platform_image_id;
   if(!out.itemImage && out.item_image_id) out.itemImage = 'private:'+out.item_image_id;
   // приоритет — локальный base64 (для PDF/просмотра без обращения к Drive)
@@ -418,7 +548,7 @@ async function loadSheetArchive(force){
   if(!force && Date.now() - archiveCacheTime <= ARCHIVE_TTL_MS && archiveCacheKey===selectedMonth) return;
   archiveLoading=true;
   const st=$('archiveStatus');
-  if(st) st.innerHTML='<span class="warn">Загружаю архив из Google Таблицы...</span>';
+  if(st) st.innerHTML='<span class="warn"><span class="spin"></span>Загружаю архив...</span>';
   try{
     const params = { action:'listSales' };
     if(selectedMonth && selectedMonth!=='all') params.month = selectedMonth;
@@ -430,7 +560,8 @@ async function loadSheetArchive(force){
     archiveLoadedFromSheet = true;
     archiveCacheTime = Date.now();
     archiveCacheKey = selectedMonth;
-    if(st) st.innerHTML='<span class="ok">Загружено: '+sheetRecords.length+' записей. Источник: Google Таблица. Локально на этом устройстве: '+records.length+'.</span>';
+    const cachedNote = data.cached ? ' (кэш скрипта)' : '';
+    if(st) st.innerHTML='<span class="ok">Загружено: '+sheetRecords.length+' записей'+cachedNote+'. Локально: '+records.length+'.</span>';
     renderArchive();
   }catch(e){
     archiveLoadedFromSheet = false;
@@ -441,16 +572,29 @@ async function loadSheetArchive(force){
 }
 async function fetchPrivateImage(fileId){
   if(!fileId) return '';
-  if(imageCache[fileId]) return imageCache[fileId];
-  try{
-    const data = await jsonpRequest({ action:'getImage', fileId }, 20000);
-    if(data && data.ok && data.dataUrl){ imageCache[fileId] = data.dataUrl; return data.dataUrl; }
-    return '';
-  }catch(e){ return ''; }
+  // 1) кэш в памяти/localStorage
+  const cached = imgCacheGet(fileId);
+  if(cached) return cached;
+  // 2) дедупликация параллельных запросов того же файла
+  if(inFlightImages[fileId]) return inFlightImages[fileId];
+  const promise = (async ()=>{
+    try{
+      const data = await jsonpRequest({ action:'getImage', fileId }, 20000);
+      if(data && data.ok && data.dataUrl){
+        imgCacheSet(fileId, data.dataUrl);
+        return data.dataUrl;
+      }
+      return '';
+    }catch(e){ return ''; }
+    finally{ delete inFlightImages[fileId]; }
+  })();
+  inFlightImages[fileId] = promise;
+  return promise;
 }
 function isPrivate(src){ return typeof src==='string' && src.indexOf('private:')===0; }
 function privateId(src){ return isPrivate(src) ? src.slice('private:'.length) : ''; }
 
+// ===== Архив =====
 function renderArchive(){
   const months=['all',...getMonths()];
   $('monthbar').innerHTML = months.map(m=>'<button class="btn small '+(m===selectedMonth?'active':'')+'" onclick="onMonthClick(\''+m+'\')">'+monthLabel(m)+'</button>').join('');
@@ -459,43 +603,50 @@ function renderArchive(){
   const total=list.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);
   $('summary').innerHTML='<div class="sumcard"><span>Источник</span><b>'+sourceText+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц / локально</span><b>'+monthLabel(selectedMonth)+' · '+records.length+'</b></div>';
   if(!list.length){ $('archive').innerHTML='<div class="card"><div class="sub">Записей пока нет.</div></div>'; return; }
-  $('archive').innerHTML = list.map((r,idx)=>{
+  $('archive').innerHTML = list.map((r)=>{
     const globalIndex=(archiveLoadedFromSheet ? sheetRecords.indexOf(r) : records.indexOf(r));
     return '<div class="rec" id="rec-'+globalIndex+'"><div class="recTop"><div><div class="recTitle">'+escapeHtml(r.title||'—')+'</div><div class="pill">'+escapeHtml(r.platform||'')+' · '+escapeHtml(r.date||'')+' · '+escapeHtml(r.invoice||'')+'</div></div><div class="money">€ '+Number(parseFloat(r.amount)||0).toFixed(2)+'</div></div>'+
     '<div class="imgs" id="imgs-'+globalIndex+'">'+renderImageCell(r.platformImage,'Скрин платформы',globalIndex,'p')+renderImageCell(r.itemImage,'Фото товара',globalIndex,'i')+'</div>'+
     '<div class="ref"><div class="reftext">'+escapeHtml(r.reference||'')+'</div><button class="btn small" onclick="copyText(\u0060'+escapeBacktick(r.reference||'')+'\u0060)">копия</button></div>'+
     '<div class="actions"><button class="btn small" onclick="makeOnePDF('+globalIndex+')">PDF позиции</button>'+(archiveLoadedFromSheet?'<button class="btn small red" onclick="deleteSheetRecord('+globalIndex+')">удалить из таблицы</button>':'<button class="btn small" onclick="resend('+globalIndex+')">в таблицу</button><button class="btn small" onclick="editRec('+globalIndex+')">редактировать</button><button class="btn small red" onclick="delRec('+globalIndex+')">удалить локально</button>')+'</div></div>';
   }).join('');
-  // ленивая подгрузка приватных картинок
-  list.forEach((r,idx)=>{
-    const gi=archiveLoadedFromSheet ? sheetRecords.indexOf(r) : records.indexOf(r);
-    if(isPrivate(r.platformImage)) lazyLoadPrivate(gi,'p',privateId(r.platformImage));
-    if(isPrivate(r.itemImage)) lazyLoadPrivate(gi,'i',privateId(r.itemImage));
-  });
+  setupLazyImages();
 }
-function onMonthClick(m){
-  selectedMonth=m;
-  if(archiveLoadedFromSheet && sheetRecordsByMonth[m]){
-    sheetRecords = sheetRecordsByMonth[m];
-    renderArchive();
-  } else {
-    renderArchive();
-    if(archiveLoadedFromSheet) loadSheetArchive(true);
+function setupLazyImages(){
+  // IntersectionObserver: грузим приватные картинки только когда юзер до них доскроллил
+  if(lazyObserver) lazyObserver.disconnect();
+  if(!('IntersectionObserver' in window)){
+    // фолбэк: грузим всё сразу
+    document.querySelectorAll('.imgPh[data-priv]').forEach(el=>loadPrivateInto(el));
+    return;
   }
+  lazyObserver = new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      if(en.isIntersecting){
+        loadPrivateInto(en.target);
+        lazyObserver.unobserve(en.target);
+      }
+    });
+  }, { rootMargin:'200px' });
+  document.querySelectorAll('.imgPh[data-priv]').forEach(el=>lazyObserver.observe(el));
 }
-function renderImageCell(src,label,gi,kind){
-  if(!src) return '<div class="imgPh">'+escapeHtml(label)+': нет</div>';
-  if(/^data:image\//.test(src)) return '<img src="'+src+'" onclick="openImg(this.src)">';
-  if(/^https?:/i.test(src)) return '<img src="'+escapeHtml(src)+'" onclick="openImg(this.src)" referrerpolicy="no-referrer">';
-  if(isPrivate(src)) return '<div class="imgPh" id="cell-'+gi+'-'+kind+'">'+escapeHtml(label)+': загружаю…</div>';
-  return '<div class="imgPh">'+escapeHtml(label)+'</div>';
-}
-async function lazyLoadPrivate(gi,kind,fileId){
-  const cell = $('cell-'+gi+'-'+kind);
-  if(!cell) return;
+async function loadPrivateInto(cell){
+  const fileId = cell.getAttribute('data-priv');
+  const gi = Number(cell.getAttribute('data-gi'));
+  const kind = cell.getAttribute('data-kind');
+  if(!fileId) return;
+  // Если в кэше — мгновенно
+  const cached = imgCacheGet(fileId);
+  if(cached){
+    swapCellToImg(cell, cached, gi, kind);
+    return;
+  }
+  cell.innerHTML = '<span class="spin"></span>загружаю…';
   const dataUrl = await fetchPrivateImage(fileId);
   if(!dataUrl){ cell.textContent='не удалось загрузить'; return; }
-  // также подкладываем в запись, чтобы PDF мог взять без повторного запроса
+  swapCellToImg(cell, dataUrl, gi, kind);
+}
+function swapCellToImg(cell, dataUrl, gi, kind){
   const src = archiveLoadedFromSheet ? sheetRecords : records;
   if(src[gi]){
     if(kind==='p') src[gi].platformImage = dataUrl;
@@ -506,33 +657,71 @@ async function lazyLoadPrivate(gi,kind,fileId){
   img.onclick = ()=>openImg(dataUrl);
   cell.replaceWith(img);
 }
+function onMonthClick(m){
+  selectedMonth=m;
+  if(archiveLoadedFromSheet && sheetRecordsByMonth[m]){
+    sheetRecords = sheetRecordsByMonth[m];
+    archiveCacheKey = m;
+    renderArchive();
+  } else {
+    renderArchive();
+    if(archiveLoadedFromSheet) loadSheetArchive(true);
+  }
+}
+function renderImageCell(src,label,gi,kind){
+  if(!src) return '<div class="imgPh">'+escapeHtml(label)+': нет</div>';
+  if(/^data:image\//.test(src)) return '<img src="'+src+'" onclick="openImg(this.src)">';
+  if(/^https?:/i.test(src)) return '<img src="'+escapeHtml(src)+'" onclick="openImg(this.src)" referrerpolicy="no-referrer">';
+  if(isPrivate(src)){
+    const id = privateId(src);
+    // если уже есть в кэше — рендерим сразу как img
+    const cached = imgCacheGet(id);
+    if(cached) return '<img src="'+cached+'" onclick="openImg(this.src)">';
+    return '<div class="imgPh" data-priv="'+escapeHtml(id)+'" data-gi="'+gi+'" data-kind="'+kind+'">'+escapeHtml(label)+'</div>';
+  }
+  return '<div class="imgPh">'+escapeHtml(label)+'</div>';
+}
 function escapeHtml(s){ return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeBacktick(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/`/g,'\\`'); }
 function copyText(t){ navigator.clipboard.writeText(t).then(()=>toast('Скопировано ✓','ok')).catch(()=>fallbackCopy(t)); }
-function delRec(i){ if(confirm('Удалить запись?')){ records.splice(i,1); saveLocal(); renderArchive(); } }
+function delRec(i){ if(confirm('Удалить запись локально?')){ records.splice(i,1); saveLocal(); renderArchive(); } }
 
 async function deleteSheetRecord(i){
   const r = sheetRecords[i];
   if(!r){ toast('Запись не найдена','err'); return; }
   const name = (r.title || 'запись') + (r.amount ? ' · € ' + r.amount : '');
-  if(!confirm('Удалить из Google Таблицы?\n\n' + name + '\n\nУдалятся строка и привязанные фото в Drive, если они были сохранены этим скриптом.')) return;
-  toast('Удаляю из таблицы…');
+  if(!confirm('Удалить из Google Таблицы?\n\n' + name + '\n\nУдалятся строка и привязанные фото в Drive.')) return;
+  toast('Удаляю...');
   try{
     const data = await jsonpRequest({ action:'deleteSale', local_id:r.local_id || '', row_number:r.row_number || r.__row || '' }, 20000);
-    if(!data || data.ok===false) throw new Error((data && data.error) || 'неизвестная ошибка удаления');
+    if(!data || data.ok===false) throw new Error((data && data.error) || 'не удалось');
     sheetRecords.splice(i,1);
     const li = records.findIndex(x => String(x.local_id||'') === String(r.local_id||''));
     if(li >= 0){ records.splice(li,1); saveLocal(); }
     archiveCacheTime = 0;
-    toast('Удалено из таблицы ✓','ok');
+    toast('Удалено ✓','ok');
     renderArchive();
-    setTimeout(()=>loadSheetArchive(true),700);
+    setTimeout(()=>loadSheetArchive(true),500);
   }catch(e){
-    toast('Не удалилось: '+e.message,'err');
+    toast('Ошибка: '+e.message,'err');
   }
 }
-function editRec(i){ const r=records[i]; tab('new'); $('title').value=r.title||''; $('amount').value=r.amount||''; $('date').value=r.date||''; $('invoice').value=r.invoice||''; $('platform').value=r.platform||'Vinted'; $('currency').value=r.currency||'EUR'; $('status').value=r.status||'Проверить'; $('comment').value=r.comment||''; draft.platformImage=r.platformImage||''; draft.itemImage=r.itemImage||''; if(draft.platformImage && /^data:image\//.test(draft.platformImage))showImage('platform',draft.platformImage); if(draft.itemImage && /^data:image\//.test(draft.itemImage))showImage('item',draft.itemImage); updateRef(); records.splice(i,1); saveLocal(); }
-async function resend(i){ await sendRecordToSheet(records[i]); renderArchive(); }
+function editRec(i){
+  const r=records[i]; tab('new');
+  $('title').value=r.title||''; $('amount').value=r.amount||''; $('date').value=r.date||''; $('invoice').value=r.invoice||'';
+  $('platform').value=r.platform||'Vinted'; $('currency').value=r.currency||'EUR'; $('status').value=r.status||'Проверить'; $('comment').value=r.comment||'';
+  draft.platformImage=r.platformImage||''; draft.itemImage=r.itemImage||'';
+  if(draft.platformImage && /^data:image\//.test(draft.platformImage))showImage('platform',draft.platformImage);
+  if(draft.itemImage && /^data:image\//.test(draft.itemImage))showImage('item',draft.itemImage);
+  updateRef(); records.splice(i,1); saveLocal();
+}
+async function resend(i){ await sendRecordToSheet(records[i], true); renderArchive(); }
+function clearLocalAfterConfirm(){
+  if(!records.length){ toast('Локальных записей нет','ok'); return; }
+  if(!confirm('Очистить локальные записи только на этом устройстве?\n\nGoogle Таблица не будет затронута.')) return;
+  records=[]; saveLocal(); archiveLoadedFromSheet=false; archiveCacheTime=0; renderArchive(); toast('Локальный кэш очищен','ok');
+}
+
 function exportJson(){ const blob=new Blob([JSON.stringify({records,settings,exported:new Date().toISOString()},null,2)],{type:'application/json'}); downloadBlob(blob,'fop_backup_'+new Date().toISOString().slice(0,10)+'.json'); }
 function importJson(inp){ const f=inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const data=JSON.parse(r.result); if(Array.isArray(data.records)){ records=data.records.concat(records); saveLocal(); toast('Импортировано ✓','ok'); renderArchive(); } }catch(e){ toast('Ошибка импорта','err'); } }; r.readAsText(f); inp.value=''; }
 function downloadCSV(){
@@ -544,7 +733,6 @@ function downloadCSV(){
 function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 
 async function ensureImageData(r){
-  // догружаем приватные картинки в base64, чтобы PDF их встроил
   if(isPrivate(r.platformImage)){
     const url = await fetchPrivateImage(privateId(r.platformImage));
     if(url) r.platformImage = url;
@@ -565,8 +753,9 @@ async function makeOnePDF(i){
 async function makeMonthPDF(){
   const rows=filteredRecords();
   if(!rows.length){ toast('Нет записей для PDF','err'); return; }
-  toast('Готовлю PDF, подгружаю картинки…');
-  for(const r of rows) await ensureImageData(r);
+  toast('Готовлю PDF, подгружаю картинки параллельно…');
+  // Параллельная подгрузка вместо последовательной — быстрее в N раз
+  await Promise.all(rows.map(ensureImageData));
   await buildPDFForRows(rows, 'FOP_report_'+(selectedMonth==='all'?'all':selectedMonth));
 }
 async function buildPDFForRows(rows, fileBase){
