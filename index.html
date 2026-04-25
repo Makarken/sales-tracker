@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v18 Cloudinary</title>
+<title>Учёт ФОП v19 Cloudinary</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v18 Cloudinary</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v19 Cloudinary</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -136,10 +136,11 @@ const DEFAULT_CLOUD_NAME = 'dv83mie7y';
 const DEFAULT_UPLOAD_PRESET = 'fop_unsigned';
 const ARCHIVE_TTL_MS = 60 * 1000;
 const ORPHANS_KEY = 'fop_orphans_v1';
+const MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
 let records = JSON.parse(localStorage.getItem('fop_records_v17') || '[]');
 let sheetRecords = [];
-let sheetRecordsByMonth = {};   // фикс: кэш по месяцам, чтобы переключение было мгновенным
+let sheetRecordsByMonth = {};
 let archiveLoadedFromSheet = false;
 let archiveLoading = false;
 let archiveCacheTime = 0;
@@ -184,7 +185,6 @@ function saveSettings(){
   $('setStatus').innerHTML = '<span class="ok">Сохранено ✓</span>';
 }
 
-// ===== Drag & drop =====
 function dragOver(e,el){ e.preventDefault(); el.classList.add('drag'); }
 function dragLeave(el){ el.classList.remove('drag'); }
 function dropFile(e,type){ e.preventDefault(); e.currentTarget.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) loadImage(f,type); }
@@ -228,7 +228,6 @@ function renderExtraThumbs(){
 }
 function removeExtra(i){ draft.extraImages.splice(i,1); renderExtraThumbs(); }
 
-// ===== OCR =====
 async function runOCR(){
   if(!draft.platformImage){ toast('Сначала загрузи скрин','err'); return; }
   $('ocrStatus').textContent = 'Распознаю текст...';
@@ -288,7 +287,6 @@ function getRef(){
   return s;
 }
 function updateRef(){ $('refText').textContent = getRef(); }
-// дебаунс через rAF — не пересобираем reference на каждый символ
 let refTimer = null;
 function onFormInput(){
   if(refTimer) cancelAnimationFrame(refTimer);
@@ -305,7 +303,33 @@ function resetForm(){
   $('rawText').textContent=''; $('ocrStatus').textContent=''; $('saveStatus').textContent='';
   renderExtraThumbs(); updateRef();
 }
-function monthFromDate(d){ const nd=normalizeDateAny(d); const m=(nd||'').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?m[3]+'-'+m[2]:new Date().toISOString().slice(0,7); }
+
+// ---- унифицированная нормализация месяца в YYYY-MM ----
+function toMonthYM(v){
+  if(!v) return '';
+  const s = String(v).trim();
+  if(/^\d{4}-\d{2}$/.test(s)) return s;
+  // ISO: 2026-03-31T21:00:00.000Z или 2026-03-31
+  let m = s.match(/^(\d{4})-(\d{2})/);
+  if(m) return m[1]+'-'+m[2];
+  // dd/mm/yyyy
+  m = s.match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);
+  if(m) return m[3]+'-'+String(m[2]).padStart(2,'0');
+  return '';
+}
+function monthFromDate(d){
+  const nd = normalizeDateAny(d);
+  const m = (nd||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? m[3]+'-'+m[2] : new Date().toISOString().slice(0,7);
+}
+function monthLabel(ym){
+  if(ym==='all' || !ym) return 'Все';
+  const norm = toMonthYM(ym) || ym;
+  const m = norm.match(/^(\d{4})-(\d{2})$/);
+  if(!m) return norm;
+  const idx = Number(m[2]) - 1;
+  return (MONTH_NAMES_RU[idx] || norm) + ' ' + m[1];
+}
 
 function makeRecord(uploads){
   uploads = uploads || { platform:null, item:null, extra:[] };
@@ -316,11 +340,12 @@ function makeRecord(uploads){
   if(uploads.platform && uploads.platform.public_id) public_ids.push(uploads.platform.public_id);
   if(uploads.item && uploads.item.public_id) public_ids.push(uploads.item.public_id);
   (uploads.extra||[]).forEach(x=>{ if(x && x.public_id) public_ids.push(x.public_id); });
+  const dateStr = formatDateForDisplay($('date').value.trim());
   return {
     local_id: 'rec_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
     created_at: new Date().toISOString(),
-    month: monthFromDate($('date').value),
-    date: formatDateForDisplay($('date').value.trim()),
+    month: monthFromDate(dateStr),
+    date: dateStr,
     platform: $('platform').value,
     title: $('title').value.trim(),
     amount: normalizeAmount($('amount').value),
@@ -402,7 +427,7 @@ function sheetPayload(rec){
   return {
     local_id: rec.local_id,
     created_at: rec.created_at,
-    month: rec.month,
+    month: toMonthYM(rec.month) || monthFromDate(rec.date),
     date: formatDateForDisplay(rec.date),
     platform: rec.platform,
     title: rec.title,
@@ -445,7 +470,6 @@ async function sendRecordToSheet(rec, verify){
   }
 }
 async function verifyInSheet(localId){
-  // 3 попытки с растущей задержкой — старт через 1.2с, потом 1.8с, потом 2.5с
   for(const d of [1200, 1800, 2500]){
     await new Promise(r=>setTimeout(r,d));
     try{
@@ -532,7 +556,8 @@ function normalizeSheetRecord(r){
   const raw = Object.assign({}, r||{});
   const out = Object.assign({}, raw);
   out.date = normalizeDateAny(raw.date || raw.Date || raw['\u0414\u0430\u0442\u0430'] || '');
-  out.month = raw.month || raw.Month || monthFromDate(out.date);
+  // фикс: month защищаем от ISO строк/Date
+  out.month = toMonthYM(raw.month || raw.Month || '') || monthFromDate(out.date);
   out.platform = raw.platform || raw.Platform || raw['\u041f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430'] || 'Vinted';
   out.title = raw.title || raw.Item || raw.item || raw['\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435'] || raw['\u0422\u043e\u0432\u0430\u0440'] || '';
   out.amount = normalizeAmount(String(raw.amount || raw.Amount || raw['\u0421\u0443\u043c\u043c\u0430'] || ''));
@@ -549,7 +574,6 @@ function normalizeSheetRecord(r){
   out.local_id = raw.local_id || raw.id || raw.ID || '';
   return out;
 }
-// фикс: фолбэк парсит только корректные URL/строки, не режет URL по запятым
 function parseExtra(v){
   if(Array.isArray(v)) return v.filter(Boolean);
   const str = String(v||'').trim();
@@ -558,7 +582,6 @@ function parseExtra(v){
     const arr = JSON.parse(str);
     if(Array.isArray(arr)) return arr.filter(Boolean);
   }catch(e){}
-  // фолбэк: сплитим только по newline (запятые внутри Cloudinary URL не трогаем)
   return str.split(/\n+/).map(s=>s.trim()).filter(Boolean);
 }
 function buildReferenceFromRecord(r){
@@ -570,25 +593,37 @@ function buildReferenceFromRecord(r){
 }
 
 function activeRecords(){ return archiveLoadedFromSheet ? sheetRecords : records; }
-function getMonths(){ return Array.from(new Set(activeRecords().map(r=>r.month||monthFromDate(r.date)))).filter(Boolean).sort().reverse(); }
-function monthLabel(ym){ if(ym==='all') return '\u0412\u0441\u0435'; const names=['\u042f\u043d\u0432\u0430\u0440\u044c','\u0424\u0435\u0432\u0440\u0430\u043b\u044c','\u041c\u0430\u0440\u0442','\u0410\u043f\u0440\u0435\u043b\u044c','\u041c\u0430\u0439','\u0418\u044e\u043d\u044c','\u0418\u044e\u043b\u044c','\u0410\u0432\u0433\u0443\u0441\u0442','\u0421\u0435\u043d\u0442\u044f\u0431\u0440\u044c','\u041e\u043a\u0442\u044f\u0431\u0440\u044c','\u041d\u043e\u044f\u0431\u0440\u044c','\u0414\u0435\u043a\u0430\u0431\u0440\u044c']; const [y,m]=(ym||'').split('-'); return (names[Number(m)-1]||ym)+' '+y; }
-function filteredRecords(){ const src=activeRecords(); return selectedMonth==='all' ? src : src.filter(r=>(r.month||monthFromDate(r.date))===selectedMonth); }
+function getMonths(){
+  // фикс: только корректные YYYY-MM, отсортированные
+  const set = new Set();
+  activeRecords().forEach(r=>{
+    const ym = toMonthYM(r.month) || monthFromDate(r.date);
+    if(/^\d{4}-\d{2}$/.test(ym)) set.add(ym);
+  });
+  return Array.from(set).sort().reverse();
+}
+function filteredRecords(){
+  const src = activeRecords();
+  if(selectedMonth==='all') return src;
+  const want = toMonthYM(selectedMonth);
+  return src.filter(r => (toMonthYM(r.month) || monthFromDate(r.date)) === want);
+}
 
 function renderArchive(){
   const months = ['all', ...getMonths()];
-  $('monthbar').innerHTML = months.map(m=>'<button class="btn small '+(m===selectedMonth?'active':'')+'" onclick="onMonthClick(\''+m+'\')">'+monthLabel(m)+'</button>').join('');
+  $('monthbar').innerHTML = months.map(m=>'<button class="btn small '+(m===selectedMonth?'active':'')+'" onclick="onMonthClick(\''+m+'\')">'+escapeHtml(monthLabel(m))+'</button>').join('');
   const list = filteredRecords();
   const total = list.reduce((a,r)=>a+(parseFloat(r.amount)||0), 0);
-  $('summary').innerHTML = '<div class="sumcard"><span>Источник</span><b>'+(archiveLoadedFromSheet?'Google Таблица':'Локально')+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+monthLabel(selectedMonth)+'</b></div>';
+  $('summary').innerHTML = '<div class="sumcard"><span>Источник</span><b>'+(archiveLoadedFromSheet?'Google Таблица':'Локально')+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+escapeHtml(monthLabel(selectedMonth))+'</b></div>';
   if(!list.length){ $('archive').innerHTML='<div class="card"><div class="sub">Записей нет.</div></div>'; return; }
   $('archive').innerHTML = list.map((r,i)=>renderRec(r,i)).join('');
 }
 function onMonthClick(m){
-  selectedMonth = m;
-  // Если архив грузим из таблицы и для этого месяца уже есть кэш — используем мгновенно
-  if(archiveLoadedFromSheet && sheetRecordsByMonth[m]){
-    sheetRecords = sheetRecordsByMonth[m];
-    archiveCacheKey = m;
+  // фикс: нормализуем то, что пришло из кнопки
+  selectedMonth = (m==='all') ? 'all' : (toMonthYM(m) || m);
+  if(archiveLoadedFromSheet && sheetRecordsByMonth[selectedMonth]){
+    sheetRecords = sheetRecordsByMonth[selectedMonth];
+    archiveCacheKey = selectedMonth;
     renderArchive();
     return;
   }
@@ -604,8 +639,6 @@ function renderRec(r,i){
   ].join('');
   return '<div class="rec"><div class="recTop"><div><div class="recTitle">'+escapeHtml(r.title||'—')+'</div><div class="pill">'+escapeHtml(r.platform||'')+' · '+escapeHtml(formatDateForDisplay(r.date)||'')+' · '+escapeHtml(r.invoice||'')+'</div></div><div class="money">€ '+Number(parseFloat(r.amount)||0).toFixed(2)+'</div></div><div class="imgs">'+imgHtml+'</div><div class="ref"><div class="reftext">'+escapeHtml(r.reference||'')+'</div><button class="btn small" onclick="copyText(\u0060'+escapeBacktick(r.reference||'')+'\u0060)">копия</button></div><div class="actions"><button class="btn small" onclick="makeOnePDF('+i+')">PDF позиции</button><button class="btn small" onclick="editRec('+i+')">редактировать</button><button class="btn small red" onclick="deleteRec('+i+')">удалить</button></div></div>';
 }
-// фикс: убрал crossorigin="anonymous" с <img> в архиве — он не нужен и может ломать показ.
-// Для PDF используется отдельный fetch с mode:'cors'.
 function renderImg(src, label){
   if(!src) return '<div class="imgPh">'+escapeHtml(label)+': нет</div>';
   return '<img src="'+escapeHtml(src)+'" title="'+escapeHtml(label)+'" loading="lazy" onclick="openImg(this.src)" referrerpolicy="no-referrer">';
@@ -617,7 +650,6 @@ async function deleteRec(i){
   if(!confirm('Удалить запись из таблицы?')) return;
   try{
     const data = await jsonpRequest({ action:'deleteSale', local_id: r.local_id||'' }, 12000);
-    // Запоминаем cloudinary_public_ids как orphan-ы (в Cloudinary они остались)
     if(data && data.cloudinary_public_ids){
       const ids = parseExtra(data.cloudinary_public_ids);
       if(ids.length) addOrphans(ids, r.title || r.local_id);
@@ -644,7 +676,6 @@ function editRec(i){
   $('currency').value = r.currency || 'EUR';
   $('status').value = r.status || 'Проверить';
   $('comment').value = r.comment || '';
-  // фото отображаем по URL — при пересохранении они зальются заново как новая запись
   if(r.platform_image_url){ $('platformImg').src=r.platform_image_url; $('platformImg').style.display='block'; $('platformPh').style.display='none'; }
   if(r.item_image_url){ $('itemImg').src=r.item_image_url; $('itemImg').style.display='block'; $('itemPh').style.display='none'; }
   draft.platformImage = ''; draft.itemImage = ''; draft.extraImages = [];
@@ -661,13 +692,8 @@ function clearLocalAfterConfirm(){
 function escapeHtml(s){ return String(s||'').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeBacktick(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/`/g,'\\`'); }
 
-// ===== Orphans tracking =====
-function loadOrphans(){
-  try{ return JSON.parse(localStorage.getItem(ORPHANS_KEY) || '[]'); }catch(e){ return []; }
-}
-function saveOrphans(arr){
-  try{ localStorage.setItem(ORPHANS_KEY, JSON.stringify(arr)); }catch(e){}
-}
+function loadOrphans(){ try{ return JSON.parse(localStorage.getItem(ORPHANS_KEY) || '[]'); }catch(e){ return []; } }
+function saveOrphans(arr){ try{ localStorage.setItem(ORPHANS_KEY, JSON.stringify(arr)); }catch(e){} }
 function addOrphans(publicIds, title){
   const arr = loadOrphans();
   const now = new Date().toISOString();
@@ -678,7 +704,7 @@ function showOrphans(){
   const arr = loadOrphans();
   if(!arr.length){ $('setStatus').innerHTML='<span class="ok">Orphan-фото нет.</span>'; return; }
   const list = arr.map(x=>'• '+escapeHtml(x.public_id)+' ('+escapeHtml(x.title||'')+', '+escapeHtml(x.deleted_at.slice(0,10))+')').join('<br>');
-  $('setStatus').innerHTML = '<div class="mini"><b>Orphan-фото в Cloudinary ('+arr.length+'):</b><br>'+list+'<br><br>Удалить их можно вручную через Cloudinary Console (Media Library → Search by public_id).</div>';
+  $('setStatus').innerHTML = '<div class="mini"><b>Orphan-фото в Cloudinary ('+arr.length+'):</b><br>'+list+'<br><br>Удалить через Cloudinary Console (Media Library → Search by public_id).</div>';
 }
 
 function exportJson(){
@@ -705,7 +731,6 @@ function downloadCSV(){
 }
 function downloadBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); }
 
-// фикс: для PDF фетчим картинку с CORS, а если упало — пробуем через Cloudinary fetch URL без преобразования
 async function imgUrlToDataUrl(url){
   if(!url) return '';
   const tryFetch = async (u)=>{
@@ -715,13 +740,10 @@ async function imgUrlToDataUrl(url){
     return await new Promise((res,rej)=>{ const fr = new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(b); });
   };
   try{ return await tryFetch(url); }catch(e1){
-    // Фолбэк: иногда Cloudinary CDN отдаёт CORS только при принудительной трансформации.
-    // Пробуем тот же URL с f_auto/q_auto, добавив трансформацию если её нет.
     try{
       const m = url.match(/^(https:\/\/res\.cloudinary\.com\/[^\/]+\/image\/upload\/)(.*)$/);
       if(m){
         const tail = m[2];
-        // если уже есть трансформации — пропустим
         if(/^[^\/]*\//.test(tail) && /[a-z]_/.test(tail.split('/')[0])) return '';
         const u2 = m[1]+'f_auto,q_auto/'+tail;
         return await tryFetch(u2);
@@ -740,7 +762,7 @@ async function makeMonthPDF(){
   const rows = filteredRecords();
   if(!rows.length){ toast('Нет записей','err'); return; }
   toast('Готовлю PDF...');
-  await buildPDFForRows(rows, 'FOP_report_'+(selectedMonth==='all'?'all':selectedMonth));
+  await buildPDFForRows(rows, 'FOP_report_'+(selectedMonth==='all'?'all':(toMonthYM(selectedMonth)||selectedMonth)));
 }
 async function buildPDFForRows(rows, fileBase){
   rows = (rows||[]).map(x=>normalizeSheetRecord(x));
@@ -756,7 +778,6 @@ async function buildPDFForRows(rows, fileBase){
     while(t.length>3 && doc.getTextWidth(t+'\u2026') > maxW) t = t.slice(0,-1);
     return t+'\u2026';
   }
-  // Параллельная подгрузка всех картинок до построения PDF — быстрее в N раз
   const imageUrls = [];
   rows.forEach(r=>{
     if(r.platform_image_url) imageUrls.push(r.platform_image_url);
@@ -789,11 +810,24 @@ async function buildPDFForRows(rows, fileBase){
     return y + bh + 7;
   }
 
-  // Summary
+  // ===== Шапка PDF =====
+  // фикс: используем читаемое "Март 2026" через monthLabel, всегда транслитерируем для PDF (jsPDF без шрифта не отрисует кириллицу)
+  function pdfHeaderLabel(){
+    if(rows.length===1) return 'Single record';
+    if(selectedMonth==='all') return 'All months';
+    const ym = toMonthYM(selectedMonth);
+    if(!ym) return String(selectedMonth);
+    const m = ym.match(/^(\d{4})-(\d{2})$/);
+    if(!m) return ym;
+    // jsPDF дефолтный шрифт Helvetica не поддерживает кириллицу, поэтому в PDF берём английские названия
+    const en = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return en[Number(m[2])-1] + ' ' + m[1];
+  }
+
   doc.setFillColor(30,30,35); doc.rect(0,0,W,34,'F');
   doc.setTextColor(212,170,106); doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text('FOP Sales Report', P, 15);
   doc.setTextColor(230,230,230); doc.setFontSize(10); doc.setFont(undefined,'normal');
-  doc.text(rows.length===1 ? 'Single record' : (selectedMonth==='all'?'All months':selectedMonth), P, 25);
+  doc.text(pdfHeaderLabel(), P, 25);
   let y = 45;
   const total = rows.reduce((a,r)=>a+(parseFloat(r.amount)||0), 0);
   doc.setTextColor(40,40,40); doc.setFontSize(11); doc.setFont(undefined,'bold');
@@ -816,7 +850,6 @@ async function buildPDFForRows(rows, fileBase){
     y += 6;
   });
 
-  // Detail pages
   for(const r of rows){
     doc.addPage(); y = 14;
     const displayDate = formatDateForDisplay(r.date);
