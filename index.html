@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v16 Cloudinary</title>
+<title>Учёт ФОП v17 Cloudinary</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v16 Cloudinary</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v17 Cloudinary</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -131,58 +131,189 @@ const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw7Ik5EA8sVwuj
 const DEFAULT_CLOUD_NAME = 'dv83mie7y';
 const DEFAULT_UPLOAD_PRESET = 'fop_unsigned';
 const ARCHIVE_TTL_MS = 60 * 1000;
-let records = JSON.parse(localStorage.getItem('fop_records_v16') || '[]');
+let records = JSON.parse(localStorage.getItem('fop_records_v17') || localStorage.getItem('fop_records_v16') || '[]');
 let sheetRecords = [];
 let archiveLoadedFromSheet = false;
 let archiveLoading = false;
 let archiveCacheTime = 0;
 let selectedMonth = 'all';
 let draft = { platformImage:'', itemImage:'', extraImages:[], rawText:'' };
-let settings = JSON.parse(localStorage.getItem('fop_settings_v16') || '{}');
+let settings = JSON.parse(localStorage.getItem('fop_settings_v17') || localStorage.getItem('fop_settings_v16') || '{}');
 if(!settings.endpoint) settings.endpoint = DEFAULT_ENDPOINT;
 if(!settings.cloudName) settings.cloudName = DEFAULT_CLOUD_NAME;
 if(!settings.uploadPreset) settings.uploadPreset = DEFAULT_UPLOAD_PRESET;
 if(!settings.token) settings.token = '';
 function $(id){return document.getElementById(id)}
 function toast(msg,type=''){const t=$('toast');t.textContent=msg;t.className='toast show';if(type)t.classList.add(type);clearTimeout(t._x);t._x=setTimeout(()=>t.className='toast',2600)}
-function saveLocal(){localStorage.setItem('fop_records_v16',JSON.stringify(records))}
+function saveLocal(){localStorage.setItem('fop_records_v17',JSON.stringify(records))}
 function tab(name){$('viewNew').style.display=name==='new'?'block':'none';$('viewArch').style.display=name==='arch'?'block':'none';$('viewSet').style.display=name==='set'?'block':'none';$('bNew').classList.toggle('active',name==='new');$('bArch').classList.toggle('active',name==='arch');$('bSet').classList.toggle('active',name==='set');if(name==='arch'){renderArchive();if(Date.now()-archiveCacheTime>ARCHIVE_TTL_MS)loadSheetArchive(false)}if(name==='set'){ $('endpoint').value=settings.endpoint; $('cloudName').value=settings.cloudName; $('uploadPreset').value=settings.uploadPreset; $('token').value=settings.token||'' }}
-function saveSettings(){settings.endpoint=$('endpoint').value.trim()||DEFAULT_ENDPOINT;settings.cloudName=$('cloudName').value.trim()||DEFAULT_CLOUD_NAME;settings.uploadPreset=$('uploadPreset').value.trim()||DEFAULT_UPLOAD_PRESET;settings.token=$('token').value.trim();localStorage.setItem('fop_settings_v16',JSON.stringify(settings));archiveCacheTime=0;$('setStatus').innerHTML='<span class="ok">Сохранено ✓</span>'}
+function saveSettings(){settings.endpoint=$('endpoint').value.trim()||DEFAULT_ENDPOINT;settings.cloudName=$('cloudName').value.trim()||DEFAULT_CLOUD_NAME;settings.uploadPreset=$('uploadPreset').value.trim()||DEFAULT_UPLOAD_PRESET;settings.token=$('token').value.trim();localStorage.setItem('fop_settings_v17',JSON.stringify(settings));archiveCacheTime=0;$('setStatus').innerHTML='<span class="ok">Сохранено ✓</span>'}
 function dragOver(e,el){e.preventDefault();el.classList.add('drag')}function dragLeave(el){el.classList.remove('drag')}function dropFile(e,type){e.preventDefault();e.currentTarget.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadImage(f,type)}function pickFile(inp,type){const f=inp.files[0];if(f)loadImage(f,type);inp.value=''}
-function loadImage(file,type){compressImage(file,1600,.84).then(src=>{draft[type+'Image']=src;showImage(type,src);if(type==='platform')$('ocrStatus').innerHTML='<span class="warn">Скрин загружен. Нажми «Распознать скрин».</span>'}).catch(e=>toast('Ошибка фото: '+e.message,'err'))}
+function loadImage(file,type){compressImage(file,1400,.78).then(src=>{draft[type+'Image']=src;showImage(type,src);if(type==='platform')$('ocrStatus').innerHTML='<span class="warn">Скрин загружен. Нажми «Распознать скрин».</span>'}).catch(e=>toast('Ошибка фото: '+e.message,'err'))}
 function showImage(type,src){$(type+'Img').src=src;$(type+'Img').style.display='block';$(type+'Ph').style.display='none';$(type+'Img').onclick=(e)=>{e.stopPropagation();openImg(src)}}
 function compressImage(file,maxW=1600,quality=.84){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,maxW/img.width);const c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',quality))};img.onerror=rej;img.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
 function openImg(src){$('modalImg').src=src;$('modal').classList.add('open')}
-function dropExtra(e){e.preventDefault();e.currentTarget.classList.remove('drag');handleExtraFiles(e.dataTransfer.files)}function pickExtra(inp){handleExtraFiles(inp.files);inp.value=''}async function handleExtraFiles(files){for(const f of Array.from(files||[]).filter(x=>x.type.startsWith('image/'))){try{draft.extraImages.push(await compressImage(f,1600,.84))}catch(e){}}renderExtraThumbs()}function renderExtraThumbs(){$('extraThumbs').innerHTML=draft.extraImages.map((src,i)=>`<div class="thumb"><img src="${src}" onclick="openImg('${src}')"><button onclick="event.stopPropagation();removeExtra(${i})">×</button></div>`).join('')}function removeExtra(i){draft.extraImages.splice(i,1);renderExtraThumbs()}
+function dropExtra(e){e.preventDefault();e.currentTarget.classList.remove('drag');handleExtraFiles(e.dataTransfer.files)}function pickExtra(inp){handleExtraFiles(inp.files);inp.value=''}async function handleExtraFiles(files){for(const f of Array.from(files||[]).filter(x=>x.type.startsWith('image/'))){try{draft.extraImages.push(await compressImage(f,1400,.78))}catch(e){}}renderExtraThumbs()}function renderExtraThumbs(){$('extraThumbs').innerHTML=draft.extraImages.map((src,i)=>`<div class="thumb"><img src="${src}" onclick="openImg('${src}')"><button onclick="event.stopPropagation();removeExtra(${i})">×</button></div>`).join('')}function removeExtra(i){draft.extraImages.splice(i,1);renderExtraThumbs()}
 async function runOCR(){if(!draft.platformImage){toast('Сначала загрузи скрин','err');return}$('ocrStatus').textContent='Распознаю текст...';try{const res=await Tesseract.recognize(draft.platformImage,'eng+spa',{logger:m=>{if(m.status)$('ocrStatus').textContent='OCR: '+m.status+(m.progress?' '+Math.round(m.progress*100)+'%':'')}});draft.rawText=res.data.text||'';$('rawText').textContent=draft.rawText;const data=parseText(draft.rawText);if(data.title)$('title').value=data.title;if(data.amount)$('amount').value=data.amount;if(data.date)$('date').value=data.date;if(data.invoice)$('invoice').value=data.invoice;if(data.platform)$('platform').value=data.platform;updateRef();$('ocrStatus').innerHTML='<span class="ok">Готово. Проверь поля.</span>'}catch(e){$('ocrStatus').innerHTML='<span class="err">Ошибка OCR: '+e.message+'</span>'}}
 function cleanText(t){return(t||'').replace(/[“”«»]/g,'"').replace(/[‘’]/g,"'").replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').trim()}function oneLine(t){return cleanText(t).replace(/\s+/g,' ').trim()}
 function parseText(raw){const text=cleanText(raw),one=oneLine(raw),data={platform:/vestiaire/i.test(one)?'Vestiaire':'Vinted'};let m=text.match(/El\s+pedido\s+de\s+["']?\s*([\s\S]+?)\s*["']?\s+ha\s+(?:finalizado|completado|terminado)/i)||one.match(/pedido\s+de\s+["']([^"']+)["']/i)||one.match(/Payment for\s+(.+?)(?:\s+by the invoice|\s+#|\s+from)/i);if(m)data.title=fixTitle(m[1]);m=one.match(/N\.?\s*[°ºo]?\s*de\s+transacci[oó]n\s*:?\s*#?\s*([0-9\s]{7,})/i)||one.match(/transacci[oó]n\s*:?\s*#?\s*([0-9\s]{7,})/i)||one.match(/invoice\s*#?\s*([0-9\s]{7,})/i);if(m)data.invoice=fixInvoice(m[1]);m=one.match(/Fecha\s*:?\s*(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/i)||one.match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);if(m)data.date=String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0')+'/'+m[3];m=one.match(/Transferencia\s+a\s+tu\s+saldo\s+Vinted\s*([\d\.,]+)\s*€/i)||one.match(/Precio\s+del\s+art[ií]culo\s*:?\s*([\d\.,]+)\s*€/i)||one.match(/(?:Total|Importe|Amount)\s*:?\s*([\d\.,]+)\s*€/i);if(m)data.amount=normalizeAmount(m[1]);return data}
 function fixTitle(s){return(s||'').replace(/["“”«»]/g,'').replace(/\s+ha\s+(finalizado|completado|terminado).*$/i,'').replace(/\s+correctamente\.?\s*$/i,'').replace(/(?:^|\n)\s*N\.?\s*[°ºo]?\s*de\s+transacci[oó]n.*$/im,'').replace(/(?:^|\n)\s*Precio.*$/im,'').replace(/(?:^|\n)\s*Transferencia.*$/im,'').replace(/\s{2,}/g,' ').trim()}function fixInvoice(s){let n=(s||'').replace(/\D/g,'');if(/^4(?:18|19|20|21)\d{9}$/.test(n))n=n.slice(1);return n}function normalizeAmount(s){return(s||'').replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.').replace(/[^0-9.]/g,'')}function fmtDate(inp){let v=inp.value.replace(/\D/g,'');if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);if(v.length>5)v=v.slice(0,5)+'/'+v.slice(5);inp.value=v.slice(0,10)}
 function getRef(){const title=$('title').value.trim(),inv=$('invoice').value.trim(),date=$('date').value.trim();let s='Payment for '+(title||'[item]');if(inv)s+=' by the invoice #'+inv;if(date)s+=' from '+date;return s}function updateRef(){$('refText').textContent=getRef()}function onFormInput(){updateRef()}function copyRef(){const text=getRef();navigator.clipboard.writeText(text).then(()=>toast('Назначение скопировано ✓','ok')).catch(()=>fallbackCopy(text))}function fallbackCopy(text){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}function toggleRaw(){const el=$('rawText');el.style.display=el.style.display==='block'?'none':'block'}
 function resetForm(){draft={platformImage:'',itemImage:'',extraImages:[],rawText:''};['platform','item'].forEach(type=>{$(type+'Img').src='';$(type+'Img').style.display='none';$(type+'Ph').style.display='block'});['title','amount','date','invoice','comment'].forEach(id=>$(id).value='');$('platform').value='Vinted';$('currency').value='EUR';$('status').value='Проверить';$('rawText').textContent='';$('ocrStatus').textContent='';$('saveStatus').textContent='';renderExtraThumbs();updateRef()}
-function monthFromDate(d){const m=(d||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+'-'+m[2]:new Date().toISOString().slice(0,7)}function makeRecord(urls={}){return{local_id:'rec_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),created_at:new Date().toISOString(),month:monthFromDate($('date').value),date:$('date').value.trim(),platform:$('platform').value,title:$('title').value.trim(),amount:normalizeAmount($('amount').value),currency:$('currency').value,bank:'',invoice:$('invoice').value.trim(),reference:getRef(),status:$('status').value,comment:$('comment').value.trim(),project:'FOP',platform_image_url:urls.platform||'',item_image_url:urls.item||'',extra_image_urls:JSON.stringify(urls.extra||[]),platformImage:draft.platformImage,itemImage:draft.itemImage,extraImages:draft.extraImages.slice(),rawText:draft.rawText}}
+function monthFromDate(d){const nd=normalizeDateAny(d);const m=(nd||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+'-'+m[2]:new Date().toISOString().slice(0,7)}
+function makeRecord(urls={}){return{local_id:'rec_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),created_at:new Date().toISOString(),month:monthFromDate($('date').value),date:formatDateForDisplay($('date').value.trim()),platform:$('platform').value,title:$('title').value.trim(),amount:normalizeAmount($('amount').value),currency:$('currency').value,bank:'',invoice:$('invoice').value.trim(),reference:getRef(),status:$('status').value,comment:$('comment').value.trim(),project:'FOP',platform_image_url:urls.platform||'',item_image_url:urls.item||'',extra_image_urls:JSON.stringify(urls.extra||[]),platformImage:draft.platformImage,itemImage:draft.itemImage,extraImages:draft.extraImages.slice(),rawText:draft.rawText}}
 function dataUrlToBlob(dataUrl){const arr=dataUrl.split(','),mime=(arr[0].match(/:(.*?);/)||[])[1]||'image/jpeg',bstr=atob(arr[1]);let n=bstr.length;const u8=new Uint8Array(n);while(n--)u8[n]=bstr.charCodeAt(n);return new Blob([u8],{type:mime})}
 async function uploadCloudinary(dataUrl,label){if(!dataUrl)return'';const fd=new FormData();fd.append('file',dataUrlToBlob(dataUrl),label+'.jpg');fd.append('upload_preset',settings.uploadPreset);fd.append('folder','fop_sales');const url='https://api.cloudinary.com/v1_1/'+encodeURIComponent(settings.cloudName)+'/image/upload';const r=await fetch(url,{method:'POST',body:fd});const j=await r.json().catch(()=>({}));if(!r.ok||!j.secure_url)throw new Error(j.error&&j.error.message?j.error.message:'Cloudinary upload failed');return j.secure_url}
 async function uploadAllImages(localId){const urls={platform:'',item:'',extra:[]};const tasks=[];if(draft.platformImage)tasks.push(uploadCloudinary(draft.platformImage,localId+'_platform').then(u=>urls.platform=u));if(draft.itemImage)tasks.push(uploadCloudinary(draft.itemImage,localId+'_item').then(u=>urls.item=u));draft.extraImages.forEach((src,i)=>tasks.push(uploadCloudinary(src,localId+'_extra_'+(i+1)).then(u=>urls.extra[i]=u)));await Promise.all(tasks);urls.extra=urls.extra.filter(Boolean);return urls}
 async function saveRecord(sendToSheet){const temp=makeRecord();if(!temp.title||!temp.amount||!temp.date){$('saveStatus').innerHTML='<span class="err">Заполни минимум: название, сумма, дата.</span>';return}let urls={platform:'',item:'',extra:[]};if(sendToSheet){try{$('saveStatus').innerHTML='<span class="warn"><span class="spin"></span>Загружаю фото в Cloudinary...</span>';urls=await uploadAllImages(temp.local_id)}catch(e){$('saveStatus').innerHTML='<span class="err">Фото не загрузилось: '+escapeHtml(e.message)+'</span>';return}}const rec=makeRecord(urls);rec.local_id=temp.local_id;records.unshift(rec);saveLocal();if(sendToSheet){const ok=await sendRecordToSheet(rec,true);if(ok)setTimeout(()=>{resetForm();tab('arch')},700)}else{setTimeout(()=>{resetForm();tab('arch')},500)}}
-function sheetPayload(rec){return{local_id:rec.local_id,created_at:rec.created_at,month:rec.month,date:rec.date,platform:rec.platform,title:rec.title,amount:rec.amount,currency:rec.currency,bank:rec.bank||'',invoice:rec.invoice,reference:rec.reference,status:rec.status,comment:rec.comment,project:rec.project||'FOP',platform_image_url:rec.platform_image_url||'',item_image_url:rec.item_image_url||'',extra_image_urls:rec.extra_image_urls||'[]'}}
+function sheetPayload(rec){return{local_id:rec.local_id,created_at:rec.created_at,month:rec.month,date:formatDateForDisplay(rec.date),platform:rec.platform,title:rec.title,amount:rec.amount,currency:rec.currency,bank:rec.bank||'',invoice:rec.invoice,reference:rec.reference,status:rec.status,comment:rec.comment,project:rec.project||'FOP',platform_image_url:rec.platform_image_url||'',item_image_url:rec.item_image_url||'',extra_image_urls:rec.extra_image_urls||'[]'}}
 async function sendRecordToSheet(rec,verify){try{$('saveStatus').innerHTML='<span class="warn"><span class="spin"></span>Сохраняю в таблицу...</span>';await fetch(settings.endpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'upsertSale',payload:sheetPayload(rec),token:settings.token||''})});if(verify){const found=await verifyInSheet(rec.local_id);if(!found){$('saveStatus').innerHTML='<span class="err">Не вижу запись в таблице. Проверь Apps Script.</span>';return false}}rec._sheet_ok=true;rec.status='Отправлено в таблицу';saveLocal();$('saveStatus').innerHTML='<span class="ok">Готово ✓ Фото и запись сохранены.</span>';toast('Сохранено ✓','ok');archiveCacheTime=0;setTimeout(()=>loadSheetArchive(true),500);return true}catch(e){$('saveStatus').innerHTML='<span class="err">Ошибка: '+escapeHtml(e.message)+'</span>';return false}}
 async function verifyInSheet(localId){for(const d of [1200,1800,2500]){await new Promise(r=>setTimeout(r,d));try{const data=await jsonpRequest({action:'listSales',local_id:localId},9000);const arr=Array.isArray(data&&data.records)?data.records:[];if(data&&data.ok&&arr.some(x=>String(x.local_id||'')===String(localId)))return true}catch(e){}}return false}
 function jsonpRequest(params,timeoutMs=15000){return new Promise((resolve,reject)=>{if(!settings.endpoint){reject(new Error('Не указан Apps Script URL'));return}const cb='fop_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);const merged=Object.assign({},params,{callback:cb,_:Date.now()});if(settings.token)merged.token=settings.token;const qs=new URLSearchParams(merged).toString();const s=document.createElement('script');let done=false;const clean=()=>{try{delete window[cb]}catch(e){}s.remove();clearTimeout(timer)};const timer=setTimeout(()=>{if(done)return;done=true;clean();reject(new Error('Таблица не ответила за '+timeoutMs/1000+' сек.'))},timeoutMs);window[cb]=(data)=>{if(done)return;done=true;clean();resolve(data)};s.onerror=()=>{if(done)return;done=true;clean();reject(new Error('Не удалось загрузить ответ Apps Script'))};s.src=settings.endpoint+(settings.endpoint.includes('?')?'&':'?')+qs;document.body.appendChild(s)})}
 async function loadSheetArchive(force){if(archiveLoading)return;if(!force&&Date.now()-archiveCacheTime<=ARCHIVE_TTL_MS)return;archiveLoading=true;const st=$('archiveStatus');if(st)st.innerHTML='<span class="warn"><span class="spin"></span>Загружаю архив...</span>';try{const params={action:'listSales'};if(selectedMonth&&selectedMonth!=='all')params.month=selectedMonth;const data=await jsonpRequest(params);if(!data||data.ok===false)throw new Error((data&&data.error)||'Пустой ответ таблицы');const arr=Array.isArray(data.records)?data.records:[];sheetRecords=arr.map(normalizeSheetRecord).filter(r=>r.title||r.amount||r.invoice);archiveLoadedFromSheet=true;archiveCacheTime=Date.now();if(st)st.innerHTML='<span class="ok">Загружено: '+sheetRecords.length+'. Источник: Google Таблица.</span>';renderArchive()}catch(e){archiveLoadedFromSheet=false;if(st)st.innerHTML='<span class="err">Не удалось прочитать таблицу: '+escapeHtml(e.message)+'. Показываю локальное.</span>';renderArchive()}finally{archiveLoading=false}}
-function normalizeSheetRecord(r){const out=Object.assign({},r||{});out.date=out.date||'';out.month=out.month||monthFromDate(out.date);out.platform=out.platform||'Vinted';out.title=out.title||'';out.amount=normalizeAmount(String(out.amount||''));out.currency=out.currency||'EUR';out.invoice=String(out.invoice||'').replace(/\.0$/,'');out.reference=out.reference||buildReferenceFromRecord(out);out.status=out.status||'';out.comment=out.comment||'';out.extra_image_urls=parseExtra(out.extra_image_urls);return out}function parseExtra(v){if(Array.isArray(v))return v;try{return JSON.parse(v||'[]')}catch(e){return String(v||'').split(/\n|,\s*/).filter(Boolean)}}function buildReferenceFromRecord(r){let s='Payment for '+(r.title||'[item]');if(r.invoice)s+=' by the invoice #'+r.invoice;if(r.date)s+=' from '+r.date;return s}
+function normalizeDateAny(v){
+  if(!v) return '';
+  if(v instanceof Date && !isNaN(v)){
+    const d=new Date(v.getTime()+12*3600*1000);
+    return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();
+  }
+  let s=String(v).trim();
+  if(!s) return '';
+  // ISO from Google Sheets/App Script, e.g. 2026-04-16T21:00:00.000Z for intended 17/04/2026.
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(m){
+    const d=new Date(s);
+    if(!isNaN(d)){
+      d.setUTCHours(d.getUTCHours()+12);
+      return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();
+    }
+    return m[3]+'/'+m[2]+'/'+m[1];
+  }
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return m[3]+'/'+m[2]+'/'+m[1];
+  m=s.match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/);
+  if(m) return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0')+'/'+m[3];
+  return s;
+}
+function formatDateForDisplay(v){ return normalizeDateAny(v); }
+function normalizeSheetRecord(r){
+  const raw=Object.assign({},r||{});
+  const out=Object.assign({},raw);
+  out.date=normalizeDateAny(raw.date || raw.Date || raw['Дата'] || '');
+  out.month=raw.month || raw.Month || monthFromDate(out.date);
+  out.platform=raw.platform || raw.Platform || raw['Платформа'] || 'Vinted';
+  out.title=raw.title || raw.Item || raw.item || raw['Название'] || raw['Товар'] || '';
+  out.amount=normalizeAmount(String(raw.amount || raw.Amount || raw['Сумма'] || ''));
+  out.currency=raw.currency || raw.Currency || raw['Валюта'] || 'EUR';
+  out.invoice=String(raw.invoice || raw.Invoice || raw.transaction || raw['Инвойс'] || raw['Транзакция'] || '').replace(/\.0$/,'');
+  out.reference=raw.reference || raw.Reference || raw['Назначение'] || buildReferenceFromRecord(out);
+  // если в reference попала ISO-дата — пересобираем назначение
+  if(/T\d{2}:\d{2}:\d{2}/.test(String(out.reference))) out.reference=buildReferenceFromRecord(out);
+  out.status=raw.status || raw.Status || raw['Статус'] || '';
+  out.comment=raw.comment || raw.Comment || raw['Комментарий'] || '';
+  out.platform_image_url=raw.platform_image_url || raw.platformImage || '';
+  out.item_image_url=raw.item_image_url || raw.itemImage || '';
+  out.extra_image_urls=parseExtra(raw.extra_image_urls || raw.extraImages || '[]');
+  out.local_id=raw.local_id || raw.id || raw.ID || '';
+  return out;
+}
+function parseExtra(v){
+  if(Array.isArray(v))return v.filter(Boolean);
+  try{const arr=JSON.parse(v||'[]');return Array.isArray(arr)?arr.filter(Boolean):[]}
+  catch(e){return String(v||'').split(/\n|,\s*/).filter(Boolean)}
+}
+function buildReferenceFromRecord(r){
+  const d=formatDateForDisplay(r.date);
+  let s='Payment for '+(r.title||'[item]');
+  if(r.invoice)s+=' by the invoice #'+r.invoice;
+  if(d)s+=' from '+d;
+  return s;
+}
 function activeRecords(){return archiveLoadedFromSheet?sheetRecords:records}function getMonths(){return Array.from(new Set(activeRecords().map(r=>r.month||monthFromDate(r.date)))).filter(Boolean).sort().reverse()}function monthLabel(ym){if(ym==='all')return'Все';const names=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];const[y,m]=(ym||'').split('-');return(names[Number(m)-1]||ym)+' '+y}function filteredRecords(){const src=activeRecords();return selectedMonth==='all'?src:src.filter(r=>(r.month||monthFromDate(r.date))===selectedMonth)}
 function renderArchive(){const months=['all',...getMonths()];$('monthbar').innerHTML=months.map(m=>'<button class="btn small '+(m===selectedMonth?'active':'')+'" onclick="selectedMonth=\''+m+'\';renderArchive();if(archiveLoadedFromSheet)loadSheetArchive(true)">'+monthLabel(m)+'</button>').join('');const list=filteredRecords();const total=list.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);$('summary').innerHTML='<div class="sumcard"><span>Источник</span><b>'+(archiveLoadedFromSheet?'Google Таблица':'Локально')+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+monthLabel(selectedMonth)+'</b></div>';if(!list.length){$('archive').innerHTML='<div class="card"><div class="sub">Записей нет.</div></div>';return}$('archive').innerHTML=list.map((r,i)=>renderRec(r,i)).join('')}
-function renderRec(r,i){const extra=parseExtra(r.extra_image_urls);const imgHtml=[renderImg(r.platform_image_url,'Скрин платформы'),renderImg(r.item_image_url,'Фото товара'),...extra.map(u=>renderImg(u,'Доп. фото'))].join('');return '<div class="rec"><div class="recTop"><div><div class="recTitle">'+escapeHtml(r.title||'—')+'</div><div class="pill">'+escapeHtml(r.platform||'')+' · '+escapeHtml(r.date||'')+' · '+escapeHtml(r.invoice||'')+'</div></div><div class="money">€ '+Number(parseFloat(r.amount)||0).toFixed(2)+'</div></div><div class="imgs">'+imgHtml+'</div><div class="ref"><div class="reftext">'+escapeHtml(r.reference||'')+'</div><button class="btn small" onclick="copyText(`'+escapeBacktick(r.reference||'')+'`)">копия</button></div><div class="actions"><button class="btn small" onclick="makeOnePDF('+i+')">PDF позиции</button><button class="btn small red" onclick="deleteRec('+i+')">удалить</button></div></div>'}function renderImg(src,label){if(!src)return'<div class="imgPh">'+escapeHtml(label)+': нет</div>';return'<img src="'+escapeHtml(src)+'" title="'+escapeHtml(label)+'" onclick="openImg(this.src)" crossorigin="anonymous" referrerpolicy="no-referrer">'}
+function renderRec(r,i){const extra=parseExtra(r.extra_image_urls);const imgHtml=[renderImg(r.platform_image_url,'Скрин платформы'),renderImg(r.item_image_url,'Фото товара'),...extra.map(u=>renderImg(u,'Доп. фото'))].join('');return '<div class="rec"><div class="recTop"><div><div class="recTitle">'+escapeHtml(r.title||'—')+'</div><div class="pill">'+escapeHtml(r.platform||'')+' · '+escapeHtml(formatDateForDisplay(r.date)||'')+' · '+escapeHtml(r.invoice||'')+'</div></div><div class="money">€ '+Number(parseFloat(r.amount)||0).toFixed(2)+'</div></div><div class="imgs">'+imgHtml+'</div><div class="ref"><div class="reftext">'+escapeHtml(r.reference||'')+'</div><button class="btn small" onclick="copyText(`'+escapeBacktick(r.reference||'')+'`)">копия</button></div><div class="actions"><button class="btn small" onclick="makeOnePDF('+i+')">PDF позиции</button><button class="btn small red" onclick="deleteRec('+i+')">удалить</button></div></div>'}function renderImg(src,label){if(!src)return'<div class="imgPh">'+escapeHtml(label)+': нет</div>';return'<img src="'+escapeHtml(src)+'" title="'+escapeHtml(label)+'" onclick="openImg(this.src)" crossorigin="anonymous" referrerpolicy="no-referrer">'}
 async function deleteRec(i){const r=filteredRecords()[i];if(!r)return;if(!confirm('Удалить запись из таблицы?'))return;try{await jsonpRequest({action:'deleteSale',local_id:r.local_id||''},12000);records=records.filter(x=>x.local_id!==r.local_id);saveLocal();archiveCacheTime=0;await loadSheetArchive(true);toast('Удалено ✓','ok')}catch(e){toast('Ошибка удаления: '+e.message,'err')}}
 function copyText(t){navigator.clipboard.writeText(t).then(()=>toast('Скопировано ✓','ok')).catch(()=>fallbackCopy(t))}
 function clearLocalAfterConfirm(){if(confirm('Очистить локальный кэш на этом устройстве? Записи в Google Таблице останутся.')){records=[];saveLocal();renderArchive();toast('Локально очищено ✓','ok')}}
 function escapeHtml(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}function escapeBacktick(s){return String(s||'').replace(/\\/g,'\\\\').replace(/`/g,'\\`')}
-function exportJson(){const blob=new Blob([JSON.stringify({records,settings,exported:new Date().toISOString()},null,2)],{type:'application/json'});downloadBlob(blob,'fop_backup_'+new Date().toISOString().slice(0,10)+'.json')}function importJson(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data.records)){records=data.records.concat(records);saveLocal();toast('Импортировано ✓','ok');renderArchive()}}catch(e){toast('Ошибка импорта','err')}};r.readAsText(f);inp.value=''}function downloadCSV(){const rows=filteredRecords();const head=['date','platform','title','amount','currency','invoice','reference','status','comment','platform_image_url','item_image_url','extra_image_urls'];const csv=[head.join(';')].concat(rows.map(r=>head.map(h=>'"'+String(r[h]||'').replace(/"/g,'""')+'"').join(';'))).join('\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'fop_sales_'+(selectedMonth==='all'?'all':selectedMonth)+'.csv')}function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function exportJson(){const blob=new Blob([JSON.stringify({records,settings,exported:new Date().toISOString()},null,2)],{type:'application/json'});downloadBlob(blob,'fop_backup_'+new Date().toISOString().slice(0,10)+'.json')}function importJson(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data.records)){records=data.records.concat(records);saveLocal();toast('Импортировано ✓','ok');renderArchive()}}catch(e){toast('Ошибка импорта','err')}};r.readAsText(f);inp.value=''}function downloadCSV(){const rows=filteredRecords();const head=['date','platform','title','amount','currency','invoice','reference','status','comment','platform_image_url','item_image_url','extra_image_urls'];const csv=[head.join(';')].concat(rows.map(r=>head.map(h=>'"'+String(h==='date'?formatDateForDisplay(r[h]):(r[h]||'')).replace(/"/g,'""')+'"').join(';'))).join('\n');downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'fop_sales_'+(selectedMonth==='all'?'all':selectedMonth)+'.csv')}function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function imgUrlToDataUrl(url){if(!url)return'';try{const r=await fetch(url,{mode:'cors'});const b=await r.blob();return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(b)})}catch(e){return''}}
 async function makeOnePDF(i){const r=filteredRecords()[i];if(!r){toast('Запись не найдена','err');return}toast('Готовлю PDF...');await buildPDFForRows([r],'FOP_record_'+(r.invoice||Date.now()))}async function makeMonthPDF(){const rows=filteredRecords();if(!rows.length){toast('Нет записей','err');return}toast('Готовлю PDF...');await buildPDFForRows(rows,'FOP_report_'+(selectedMonth==='all'?'all':selectedMonth))}
-async function buildPDFForRows(rows,fileBase){const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,H=297,P=12,usableW=W-P*2;function safe(v){return String(v||'').replace(/[–—]/g,'-')}function fit(nw,nh,bx,by,bw,bh){const sc=Math.min(bw/nw,bh/nh);const w=nw*sc,h=nh*sc;return{x:bx+(bw-w)/2,y:by+(bh-h)/2,w,h}}async function drawImg(url,label,y,bh){if(!url)return y;const data=await imgUrlToDataUrl(url);if(!data){if(y+12>H-P){doc.addPage();y=P}doc.setFontSize(7);doc.setTextColor(80,80,80);doc.text(label+': '+url,P,y);return y+8}const im=await new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth,h:img.naturalHeight});img.onerror=()=>res(null);img.src=data});if(!im)return y;if(y+bh+12>H-P){doc.addPage();y=P}doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(120,120,120);doc.text(label,P,y);y+=4;doc.setDrawColor(225,225,225);doc.roundedRect(P,y,usableW,bh,2,2,'S');const f=fit(im.w,im.h,P+1,y+1,usableW-2,bh-2);doc.addImage(data,data.startsWith('data:image/png')?'PNG':'JPEG',f.x,f.y,f.w,f.h,undefined,'MEDIUM');return y+bh+7}doc.setFillColor(30,30,35);doc.rect(0,0,W,34,'F');doc.setTextColor(212,170,106);doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('FOP Sales Report',P,15);doc.setTextColor(230,230,230);doc.setFontSize(10);doc.text(rows.length===1?'Single record':(selectedMonth==='all'?'All months':selectedMonth),P,25);let y=45;const total=rows.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);doc.setTextColor(40,40,40);doc.setFontSize(10);doc.setFont(undefined,'bold');doc.text('Total: EUR '+total.toFixed(2)+'   Records: '+rows.length,P,y);y+=11;doc.setFontSize(7);doc.text('DATE',P,y);doc.text('PLATFORM',P+25,y);doc.text('ITEM',P+55,y);doc.text('INVOICE',P+130,y);doc.text('EUR',W-P,y,{align:'right'});y+=5;doc.setFont(undefined,'normal');rows.forEach((r,i)=>{if(y>280){doc.addPage();y=15}if(i%2===0){doc.setFillColor(248,248,248);doc.rect(P,y-4,usableW,6,'F')}doc.setTextColor(45,45,45);doc.text(safe(r.date),P,y);doc.text(safe(r.platform),P+25,y);doc.text(safe(r.title).slice(0,45),P+55,y);doc.text(safe(r.invoice).slice(0,18),P+130,y);doc.text(Number(parseFloat(r.amount)||0).toFixed(2),W-P,y,{align:'right'});y+=6});for(const r of rows){doc.addPage();y=14;doc.setTextColor(30,30,30);doc.setFontSize(13);doc.setFont(undefined,'bold');const lines=doc.splitTextToSize(safe(r.title||'-'),usableW);doc.text(lines.slice(0,2),P,y);y+=lines.slice(0,2).length*6+2;doc.setFontSize(8.5);doc.setFont(undefined,'normal');doc.setTextColor(55,55,55);doc.text('Date: '+safe(r.date)+'    Platform: '+safe(r.platform)+'    Amount: '+safe(r.currency||'EUR')+' '+Number(parseFloat(r.amount)||0).toFixed(2),P,y);y+=5;doc.text('Invoice: '+safe(r.invoice),P,y);y+=5;const refLines=doc.splitTextToSize('Reference: '+safe(r.reference),usableW);doc.text(refLines.slice(0,3),P,y);y+=refLines.slice(0,3).length*4.5+5;y=await drawImg(r.platform_image_url,'PLATFORM SCREENSHOT',y,105);y=await drawImg(r.item_image_url,'ITEM PHOTO',y,86);const extra=parseExtra(r.extra_image_urls);for(let i=0;i<extra.length;i++)y=await drawImg(extra[i],'EXTRA PHOTO '+(i+1),y,82);doc.setTextColor(170,170,170);doc.setFontSize(7);doc.text('Generated '+new Date().toLocaleDateString('ru-RU'),W/2,H-5,{align:'center'})}doc.save(fileBase+'.pdf')}
-async function testSheet(){$('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю таблицу...</span>';try{const data=await jsonpRequest({action:'ping'},12000);$('setStatus').innerHTML=data&&data.ok?'<span class="ok">Таблица работает: '+escapeHtml(data.message||'OK')+'</span>':'<span class="err">Ошибка: '+escapeHtml((data&&data.error)||'unknown')+'</span>'}catch(e){$('setStatus').innerHTML='<span class="err">'+escapeHtml(e.message)+'</span>'}}async function testCloudinary(){$('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю Cloudinary...</span>';try{const tiny='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';const url=await uploadCloudinary(tiny,'test_'+Date.now());$('setStatus').innerHTML='<span class="ok">Cloudinary работает ✓</span><br><span class="mini">'+escapeHtml(url)+'</span>'}catch(e){$('setStatus').innerHTML='<span class="err">Cloudinary ошибка: '+escapeHtml(e.message)+'</span>'}}
+async function buildPDFForRows(rows,fileBase){
+  rows=(rows||[]).map(x=>normalizeSheetRecord(x));
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,H=297,P=12,usableW=W-P*2;
+  function safe(v){return String(v||'').replace(/[–—]/g,'-')}
+  function fit(nw,nh,bx,by,bw,bh){const sc=Math.min(bw/nw,bh/nh);const w=nw*sc,h=nh*sc;return{x:bx+(bw-w)/2,y:by+(bh-h)/2,w,h}}
+  function clipText(text,maxW){
+    text=safe(text);
+    if(doc.getTextWidth(text)<=maxW)return text;
+    let t=text;
+    while(t.length>3 && doc.getTextWidth(t+'…')>maxW)t=t.slice(0,-1);
+    return t+'…';
+  }
+  async function drawImg(url,label,y,bh){
+    if(!url)return y;
+    const data=await imgUrlToDataUrl(url);
+    if(!data){
+      if(y+12>H-P){doc.addPage();y=P}
+      doc.setFontSize(7);doc.setTextColor(80,80,80);
+      const lines=doc.splitTextToSize(label+': '+url,usableW);
+      doc.text(lines.slice(0,2),P,y);
+      return y+lines.slice(0,2).length*4+4;
+    }
+    const im=await new Promise(res=>{const img=new Image();img.onload=()=>res({w:img.naturalWidth,h:img.naturalHeight});img.onerror=()=>res(null);img.src=data});
+    if(!im)return y;
+    if(y+bh+12>H-P){doc.addPage();y=P}
+    doc.setFontSize(7);doc.setFont(undefined,'bold');doc.setTextColor(120,120,120);doc.text(label,P,y);y+=4;
+    doc.setDrawColor(225,225,225);doc.roundedRect(P,y,usableW,bh,2,2,'S');
+    const f=fit(im.w,im.h,P+1,y+1,usableW-2,bh-2);
+    try{doc.addImage(data,data.startsWith('data:image/png')?'PNG':'JPEG',f.x,f.y,f.w,f.h,undefined,'MEDIUM')}catch(e){}
+    return y+bh+7;
+  }
+  // Summary page
+  doc.setFillColor(30,30,35);doc.rect(0,0,W,34,'F');
+  doc.setTextColor(212,170,106);doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text('FOP Sales Report',P,15);
+  doc.setTextColor(230,230,230);doc.setFontSize(10);doc.setFont(undefined,'normal');doc.text(rows.length===1?'Single record':(selectedMonth==='all'?'All months':selectedMonth),P,25);
+  let y=45;const total=rows.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);
+  doc.setTextColor(40,40,40);doc.setFontSize(11);doc.setFont(undefined,'bold');doc.text('Total: EUR '+total.toFixed(2)+'   Records: '+rows.length,P,y);y+=12;
+  const X={date:P,platform:P+31,item:P+58,invoice:P+139,eur:W-P};
+  const MW={date:28,platform:24,item:76,invoice:35};
+  doc.setFontSize(7);doc.setTextColor(70,70,70);doc.setFont(undefined,'bold');
+  doc.text('DATE',X.date,y);doc.text('PLATFORM',X.platform,y);doc.text('ITEM',X.item,y);doc.text('INVOICE',X.invoice,y);doc.text('EUR',X.eur,y,{align:'right'});y+=5;
+  doc.setFont(undefined,'normal');
+  rows.forEach((r,i)=>{
+    if(y>280){doc.addPage();y=15}
+    if(i%2===0){doc.setFillColor(248,248,248);doc.rect(P,y-4,usableW,6,'F')}
+    doc.setTextColor(45,45,45);doc.setFontSize(7);
+    doc.text(clipText(formatDateForDisplay(r.date),MW.date),X.date,y);
+    doc.text(clipText(r.platform,MW.platform),X.platform,y);
+    doc.text(clipText(r.title,MW.item),X.item,y);
+    doc.text(clipText(r.invoice,MW.invoice),X.invoice,y);
+    doc.text(Number(parseFloat(r.amount)||0).toFixed(2),X.eur,y,{align:'right'});
+    y+=6;
+  });
+  // Detail pages
+  for(const r of rows){
+    doc.addPage();y=14;
+    const displayDate=formatDateForDisplay(r.date);
+    const ref=/T\d{2}:\d{2}:\d{2}/.test(String(r.reference||''))?buildReferenceFromRecord(r):(r.reference||buildReferenceFromRecord(r));
+    doc.setTextColor(30,30,30);doc.setFontSize(13);doc.setFont(undefined,'bold');
+    const lines=doc.splitTextToSize(safe(r.title||'-'),usableW);doc.text(lines.slice(0,2),P,y);y+=lines.slice(0,2).length*6+2;
+    doc.setFontSize(8.5);doc.setFont(undefined,'normal');doc.setTextColor(55,55,55);
+    const info='Date: '+safe(displayDate)+'    Platform: '+safe(r.platform)+'    Amount: '+safe(r.currency||'EUR')+' '+Number(parseFloat(r.amount)||0).toFixed(2);
+    doc.text(doc.splitTextToSize(info,usableW).slice(0,2),P,y);y+=5;
+    doc.text('Invoice: '+safe(r.invoice),P,y);y+=5;
+    const refLines=doc.splitTextToSize('Reference: '+safe(ref),usableW);doc.text(refLines.slice(0,4),P,y);y+=refLines.slice(0,4).length*4.5+5;
+    y=await drawImg(r.platform_image_url,'PLATFORM / PAYMENT SCREENSHOT',y,112);
+    y=await drawImg(r.item_image_url,'ITEM / POSITION PHOTO',y,88);
+    const extra=parseExtra(r.extra_image_urls);
+    for(let i=0;i<extra.length;i++)y=await drawImg(extra[i],'EXTRA PHOTO '+(i+1),y,82);
+    doc.setTextColor(170,170,170);doc.setFontSize(7);doc.text('Generated '+new Date().toLocaleDateString('ru-RU'),W/2,H-5,{align:'center'});
+  }
+  doc.save(fileBase+'.pdf');
+}async function testSheet(){$('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю таблицу...</span>';try{const data=await jsonpRequest({action:'ping'},12000);$('setStatus').innerHTML=data&&data.ok?'<span class="ok">Таблица работает: '+escapeHtml(data.message||'OK')+'</span>':'<span class="err">Ошибка: '+escapeHtml((data&&data.error)||'unknown')+'</span>'}catch(e){$('setStatus').innerHTML='<span class="err">'+escapeHtml(e.message)+'</span>'}}async function testCloudinary(){$('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю Cloudinary...</span>';try{const tiny='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';const url=await uploadCloudinary(tiny,'test_'+Date.now());$('setStatus').innerHTML='<span class="ok">Cloudinary работает ✓</span><br><span class="mini">'+escapeHtml(url)+'</span>'}catch(e){$('setStatus').innerHTML='<span class="err">Cloudinary ошибка: '+escapeHtml(e.message)+'</span>'}}
 updateRef();
 </script>
 </body>
