@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v14</title>
+<title>Учёт ФОП v15</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v14</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v15</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -127,6 +127,7 @@
       </div>
       <div class="actions">
         <button class="btn" onclick="testSheet()">Проверить связь</button>
+        <button class="btn" onclick="testDrive()">Проверить Drive/фото</button>
         <button class="btn" onclick="clearImageCache()">Очистить кэш картинок</button>
       </div>
       <div class="status" id="setStatus"></div>
@@ -249,9 +250,9 @@ function renderUploadBar(){
   if(!bar) return;
   if(!photoQueue.length){ bar.classList.remove('show'); bar.innerHTML=''; return; }
   bar.classList.add('show');
-  const failed = photoQueue.filter(x => x.attempts >= 3).length;
+  const failed = photoQueue.filter(x => x.attempts >= 2).length;
   const note = failed ? ' · <span style="color:var(--red)">не удалось: '+failed+'</span>' : '';
-  bar.innerHTML = '<span class="spin"></span>Загружаю фото в Drive: <b>'+photoQueue.length+'</b>'+note;
+  bar.innerHTML = '<span class="spin"></span>Фото в Drive: <b>'+photoQueue.length+'</b> в очереди'+note+'<br><small>если долго висит — нажми «Дослать фото всех» позже</small>'; 
 }
 async function startPhotoUploader(){
   if(photoUploaderRunning) return;
@@ -260,7 +261,7 @@ async function startPhotoUploader(){
     while(photoQueue.length){
       const item = photoQueue[0];
       // отбрасываем зафейлившиеся 3+ раз — пусть юзер вручную нажмёт "Дослать фото"
-      if(item.attempts >= 3){
+      if(item.attempts >= 2){
         photoQueue.shift();
         savePhotoQueue();
         continue;
@@ -308,8 +309,11 @@ async function startPhotoUploader(){
       }catch(e){
         item.attempts = (item.attempts || 0) + 1;
         savePhotoQueue();
-        // экспоненциальная задержка между попытками
-        await new Promise(r=>setTimeout(r, 1500 * item.attempts));
+        if(item.attempts >= 2){
+          console.warn('Photo upload failed, removed from active queue', item.kind, item.local_id);
+          toast('Фото не загрузилось в Drive. Проверь Drive в настройках и нажми «Дослать фото всех».','err');
+        }
+        await new Promise(r=>setTimeout(r, 1200 * item.attempts));
       }
     }
   } finally {
@@ -317,22 +321,27 @@ async function startPhotoUploader(){
     renderUploadBar();
   }
 }
+async function fetchNoCorsPost(body, timeoutMs=18000){
+  return await Promise.race([
+    fetch(settings.endpoint, {
+      method:'POST', mode:'no-cors',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    }),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')), timeoutMs))
+  ]);
+}
 async function jsonpAttachImage(item){
-  // POST через no-cors не вернёт ответ, поэтому используем GET через JSONP.
-  // НО: dataUrl может быть большой, в URL-параметре он не пройдёт.
-  // Поэтому используем POST + опрос: POST отправляем с no-cors, потом верифицируем через listSales
-  // и читаем platform_image_id / item_image_id.
   const payload = { local_id: item.local_id, kind: item.kind, slot: Number(item.slot||0), dataUrl: item.dataUrl };
-  await fetch(settings.endpoint, {
-    method:'POST', mode:'no-cors',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action:'attachImage', payload, token: settings.token||'' })
-  });
-  // ждём и опрашиваем через listSales по local_id
-  for(let a=0; a<6; a++){
-    await new Promise(r=>setTimeout(r, a===0 ? 1500 : 1500));
+  try{
+    await fetchNoCorsPost({ action:'attachImage', payload, token: settings.token||'' }, 18000);
+  }catch(e){
+    // Даже если ожидание оборвалось, Apps Script мог продолжить сохранение — проверяем ниже.
+  }
+  for(let a=0; a<3; a++){
+    await new Promise(r=>setTimeout(r, 2200));
     try{
-      const data = await jsonpRequest({ action:'listSales', local_id: item.local_id }, 8000);
+      const data = await jsonpRequest({ action:'listSales', local_id: item.local_id }, 9000);
       const arr = Array.isArray(data && data.records) ? data.records : [];
       if(arr.length){
         const rec = arr[0];
@@ -347,7 +356,7 @@ async function jsonpAttachImage(item){
       }
     }catch(e){}
   }
-  return { ok:false, error:'не удалось подтвердить загрузку' };
+  return { ok:false, error:'фото не подтвердилось в таблице' };
 }
 
 function resyncPendingPhotos(){
@@ -406,7 +415,7 @@ function dragLeave(el){ el.classList.remove('drag'); }
 function dropFile(e,type){ e.preventDefault(); e.currentTarget.classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) loadImage(f,type); }
 function pickFile(inp,type){ const f=inp.files[0]; if(f) loadImage(f,type); inp.value=''; }
 function loadImage(file,type){
-  compressImage(file,1600,.86).then(src=>{
+  compressImage(file, type==='platform'?1300:1100, type==='platform'?.78:.72).then(src=>{
     draft[type+'Image']=src; showImage(type,src);
     if(type==='platform') $('ocrStatus').innerHTML='<span class="warn">Скрин загружен. Нажми «Распознать скрин».</span>';
   }).catch(e=>toast('Ошибка фото: '+e.message,'err'));
@@ -416,7 +425,7 @@ function dropExtraFiles(e){ e.preventDefault(); e.currentTarget.classList.remove
 async function addExtraFiles(files){
   if(!files.length) return;
   for(const f of files){
-    try{ draft.extraImages.push(await compressImage(f,1600,.84)); }
+    try{ draft.extraImages.push(await compressImage(f,1000,.65)); }
     catch(e){ toast('Ошибка доп. фото: '+e.message,'err'); }
   }
   renderExtraImages();
@@ -686,6 +695,17 @@ async function testSheet(){
     else $('setStatus').innerHTML='<span class="err">Ответ есть, но ошибка: '+escapeHtml((data&&data.error)||'unknown')+'</span>';
   } catch(e){ $('setStatus').innerHTML='<span class="err">Ошибка: '+escapeHtml(e.message)+'</span>'; }
 }
+async function testDrive(){
+  $('setStatus').innerHTML='<span class="warn"><span class="spin"></span>Проверяю Drive...</span>';
+  try{
+    const data = await jsonpRequest({action:'pingDrive'}, 15000);
+    if(data && data.ok) $('setStatus').innerHTML='<span class="ok">Drive работает. Папка: '+escapeHtml(data.folder_name||'OK')+'</span>';
+    else $('setStatus').innerHTML='<span class="err">Drive ответил ошибкой: '+escapeHtml((data&&data.error)||'unknown')+'</span>';
+  }catch(e){
+    $('setStatus').innerHTML='<span class="err">Drive не ответил: '+escapeHtml(e.message)+'. В Apps Script выбери функцию setupOnce и нажми Run для авторизации Drive.</span>';
+  }
+}
+
 
 function activeRecords(){ return archiveLoadedFromSheet ? sheetRecords : records; }
 function getMonths(){ const set=new Set(activeRecords().map(r=>r.month||monthFromDate(r.date))); return Array.from(set).filter(Boolean).sort().reverse(); }
