@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v9</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v10</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -87,7 +87,7 @@
 
   <section id="viewArch" style="display:none">
     <div class="card">
-      <div class="split"><div><div class="h">Архив</div><div class="sub">Архив грузится из Google Таблицы. Картинки приватные на Drive — подгружаются по запросу при открытии или построении PDF.</div></div><div class="actions"><button class="btn" onclick="loadSheetArchive(true)">↻ Обновить из таблицы</button><button class="btn" onclick="downloadCSV()">CSV</button><button class="btn" onclick="makeMonthPDF()">PDF месяца</button></div></div>
+      <div class="split"><div><div class="h">Архив</div><div class="sub">Архив грузится из Google Таблицы. Картинки приватные на Drive — подгружаются по запросу при открытии или построении PDF.</div></div><div class="actions"><button class="btn" onclick="loadSheetArchive(true)">↻ Обновить из таблицы</button><button class="btn" onclick="downloadCSV()">CSV</button><button class="btn" onclick="makeMonthPDF()">PDF месяца</button><button class="btn" onclick="syncLocalRecords()">⬆️ Выгрузить локальные</button></div></div>
       <div class="status" id="archiveStatus"></div>
     </div>
     <div class="sumline" id="summary"></div>
@@ -296,24 +296,65 @@ async function saveRecord(sendToSheet){
   const rec=makeRecord();
   if(!rec.title || !rec.amount || !rec.date){ $('saveStatus').innerHTML='<span class="err">Заполни минимум: название, сумма, дата.</span>'; return; }
   records.unshift(rec); saveLocal();
-  $('saveStatus').innerHTML='<span class="ok">Сохранено локально ✓</span>';
-  if(sendToSheet){ await sendRecordToSheet(rec); }
-  setTimeout(()=>{ resetForm(); tab('arch'); }, 600);
+  $('saveStatus').innerHTML='<span class="ok">Сохранено локально на этом устройстве ✓</span>';
+  if(sendToSheet){
+    const ok = await sendRecordToSheet(rec, true);
+    if(ok){ setTimeout(()=>{ resetForm(); tab('arch'); }, 700); }
+    else { $('saveStatus').innerHTML='<span class="err">Запись осталась локально. Открой архив на этом же телефоне и нажми «Выгрузить локальные» после проверки Apps Script.</span>'; }
+  } else {
+    setTimeout(()=>{ resetForm(); tab('arch'); }, 600);
+  }
 }
-async function sendRecordToSheet(rec){
+async function sendRecordToSheet(rec, verify){
   const payload = Object.assign({}, rec);
   try{
     await fetch(settings.endpoint, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'upsertSale', payload, token: settings.token||'' }) });
-    rec.status='Отправлено в таблицу'; saveLocal();
-    $('saveStatus').innerHTML='<span class="ok">Отправлено в Google Таблицу ✓</span>'; toast('Отправлено в таблицу ✓','ok');
+    if(verify){
+      $('saveStatus').innerHTML='<span class="warn">Запрос отправлен. Проверяю, появилась ли запись в Google Таблице...</span>';
+      const found = await verifyInSheet(rec.local_id, 5);
+      if(!found){ toast('Не вижу запись в таблице','err'); return false; }
+    }
+    rec.status='Отправлено в таблицу'; rec._sheet_ok = true; rec._sheet_at = new Date().toISOString(); saveLocal();
+    $('saveStatus').innerHTML='<span class="ok">Запись реально найдена в Google Таблице ✓</span>'; toast('Отправлено в таблицу ✓','ok');
     archiveCacheTime = 0;
-    setTimeout(()=>loadSheetArchive(false),800);
-  }catch(e){ $('saveStatus').innerHTML='<span class="err">Не отправилось: '+e.message+'</span>'; toast('Ошибка отправки','err'); }
+    setTimeout(()=>loadSheetArchive(true),800);
+    return true;
+  }catch(e){ $('saveStatus').innerHTML='<span class="err">Не отправилось: '+e.message+'</span>'; toast('Ошибка отправки','err'); return false; }
+}
+async function verifyInSheet(localId, attempts){
+  for(let a=0; a<attempts; a++){
+    await new Promise(r=>setTimeout(r, 900 + a*500));
+    try{
+      const data = await jsonpRequest({ action:'listSales', local_id: localId }, 12000);
+      const arr = Array.isArray(data.records) ? data.records : [];
+      if(data && data.ok && arr.some(x => String(x.local_id||'') === String(localId))) return true;
+    }catch(e){}
+  }
+  return false;
+}
+async function syncLocalRecords(){
+  if(!records.length){ toast('На этом устройстве нет локальных записей','err'); return; }
+  const candidates = records.filter(r => !r._sheet_ok);
+  if(!candidates.length){ toast('Все локальные уже отмечены как отправленные','ok'); return; }
+  if(!confirm('Выгрузить в Google Таблицу локальные записи с этого устройства?\n\nБудет отправлено: '+candidates.length)) return;
+  const st=$('archiveStatus'); if(st) st.innerHTML='<span class="warn">Выгружаю локальные записи: 0 / '+candidates.length+'</span>';
+  let ok=0, fail=0;
+  for(let i=0;i<candidates.length;i++){
+    if(st) st.innerHTML='<span class="warn">Выгружаю локальные записи: '+i+' / '+candidates.length+'</span>';
+    const sent = await sendRecordToSheet(candidates[i], true);
+    if(sent) ok++; else fail++;
+  }
+  if(st) st.innerHTML='<span class="'+(fail?'warn':'ok')+'">Выгрузка завершена. Успешно: '+ok+', ошибок: '+fail+'.</span>';
+  archiveCacheTime = 0;
+  await loadSheetArchive(true);
 }
 async function testSheet(){
   $('setStatus').textContent='Проверяю...';
-  try{ await fetch(settings.endpoint, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'ping', payload:{}, token: settings.token||'' }) }); $('setStatus').innerHTML='<span class="ok">Запрос отправлен. Если Apps Script развернут правильно, связь есть.</span>'; }
-  catch(e){ $('setStatus').innerHTML='<span class="err">Ошибка: '+e.message+'</span>'; }
+  try{
+    const data = await jsonpRequest({action:'ping'}, 12000);
+    if(data && data.ok) $('setStatus').innerHTML='<span class="ok">Связь есть: '+escapeHtml(data.message||'OK')+'</span>';
+    else $('setStatus').innerHTML='<span class="err">Ответ есть, но ошибка: '+escapeHtml((data&&data.error)||'unknown')+'</span>';
+  } catch(e){ $('setStatus').innerHTML='<span class="err">Ошибка: '+escapeHtml(e.message)+'</span>'; }
 }
 function activeRecords(){ return archiveLoadedFromSheet ? sheetRecords : records; }
 function getMonths(){ const set=new Set(activeRecords().map(r=>r.month||monthFromDate(r.date))); return Array.from(set).filter(Boolean).sort().reverse(); }
@@ -389,7 +430,7 @@ async function loadSheetArchive(force){
     archiveLoadedFromSheet = true;
     archiveCacheTime = Date.now();
     archiveCacheKey = selectedMonth;
-    if(st) st.innerHTML='<span class="ok">Загружено: '+sheetRecords.length+' записей. Источник: Google Таблица.</span>';
+    if(st) st.innerHTML='<span class="ok">Загружено: '+sheetRecords.length+' записей. Источник: Google Таблица. Локально на этом устройстве: '+records.length+'.</span>';
     renderArchive();
   }catch(e){
     archiveLoadedFromSheet = false;
@@ -416,7 +457,7 @@ function renderArchive(){
   const list=filteredRecords();
   const sourceText = archiveLoadedFromSheet ? 'Google Таблица' : 'локальный кэш';
   const total=list.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);
-  $('summary').innerHTML='<div class="sumcard"><span>Источник</span><b>'+sourceText+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+monthLabel(selectedMonth)+'</b></div>';
+  $('summary').innerHTML='<div class="sumcard"><span>Источник</span><b>'+sourceText+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц / локально</span><b>'+monthLabel(selectedMonth)+' · '+records.length+'</b></div>';
   if(!list.length){ $('archive').innerHTML='<div class="card"><div class="sub">Записей пока нет.</div></div>'; return; }
   $('archive').innerHTML = list.map((r,idx)=>{
     const globalIndex=(archiveLoadedFromSheet ? sheetRecords.indexOf(r) : records.indexOf(r));
