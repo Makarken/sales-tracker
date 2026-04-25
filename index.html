@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v5</title>
+<title>Учёт ФОП v7</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v5</small></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v7</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -87,7 +87,8 @@
 
   <section id="viewArch" style="display:none">
     <div class="card">
-      <div class="split"><div><div class="h">Архив</div><div class="sub">Тут копятся записи. Можно скачать CSV или PDF за месяц для бухгалтера/банка.</div></div><div class="actions"><button class="btn" onclick="downloadCSV()">CSV</button><button class="btn" onclick="makeMonthPDF()">PDF месяца</button></div></div>
+      <div class="split"><div><div class="h">Архив</div><div class="sub">Архив теперь грузится из Google Таблицы. Локальные записи используются только как запасной кэш, если таблица не ответила.</div></div><div class="actions"><button class="btn" onclick="loadSheetArchive(true)">↻ Обновить из таблицы</button><button class="btn" onclick="downloadCSV()">CSV</button><button class="btn" onclick="makeMonthPDF()">PDF месяца</button></div></div>
+      <div class="status" id="archiveStatus"></div>
     </div>
     <div class="sumline" id="summary"></div>
     <div class="monthbar" id="monthbar"></div>
@@ -118,6 +119,9 @@
 <script>
 const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw7Ik5EA8sVwujdsHOvrXQk2A_HaKyVAmREPi6e7hVf0kfR5UZhcvD6DuPebfXAXcFR/exec';
 let records = JSON.parse(localStorage.getItem('fop_records_v3') || '[]');
+let sheetRecords = [];
+let archiveLoadedFromSheet = false;
+let archiveLoading = false;
 let draft = { platformImage: '', itemImage: '', rawText: '' };
 let selectedMonth = 'all';
 let settings = JSON.parse(localStorage.getItem('fop_settings_v3') || '{}');
@@ -132,7 +136,7 @@ function tab(name){
   $('bNew').classList.toggle('active', name==='new');
   $('bArch').classList.toggle('active', name==='arch');
   $('bSet').classList.toggle('active', name==='set');
-  if(name==='arch') renderArchive();
+  if(name==='arch') { renderArchive(); loadSheetArchive(false); }
   if(name==='set') $('endpoint').value = settings.endpoint;
 }
 function saveLocal(){ localStorage.setItem('fop_records_v3', JSON.stringify(records)); }
@@ -287,10 +291,11 @@ async function saveRecord(sendToSheet){
 }
 async function sendRecordToSheet(rec){
   const payload = Object.assign({}, rec);
-  delete payload.platformImage; delete payload.itemImage; delete payload.rawText;
+  // v7 отправляет и картинки. Новый Code.gs может сохранить их в Google Drive/таблицу.
+  // Если старый Code.gs их игнорирует — основные данные всё равно сохранятся.
   try{
     await fetch(settings.endpoint, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'upsertSale', payload }) });
-    rec.status='Отправлено в таблицу'; saveLocal(); $('saveStatus').innerHTML='<span class="ok">Отправлено в Google Таблицу ✓</span>'; toast('Отправлено в таблицу ✓','ok');
+    rec.status='Отправлено в таблицу'; saveLocal(); $('saveStatus').innerHTML='<span class="ok">Отправлено в Google Таблицу ✓</span>'; toast('Отправлено в таблицу ✓','ok'); setTimeout(()=>loadSheetArchive(false),800);
   }catch(e){ $('saveStatus').innerHTML='<span class="err">Не отправилось: '+e.message+'</span>'; toast('Ошибка отправки','err'); }
 }
 async function testSheet(){
@@ -298,23 +303,98 @@ async function testSheet(){
   try{ await fetch(settings.endpoint, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ action:'ping', payload:{} }) }); $('setStatus').innerHTML='<span class="ok">Запрос отправлен. Если Apps Script развернут правильно, связь есть.</span>'; }
   catch(e){ $('setStatus').innerHTML='<span class="err">Ошибка: '+e.message+'</span>'; }
 }
-function getMonths(){ const set=new Set(records.map(r=>r.month||monthFromDate(r.date))); return Array.from(set).sort().reverse(); }
+function activeRecords(){ return archiveLoadedFromSheet ? sheetRecords : records; }
+function getMonths(){ const set=new Set(activeRecords().map(r=>r.month||monthFromDate(r.date))); return Array.from(set).filter(Boolean).sort().reverse(); }
 function monthLabel(ym){ if(ym==='all') return 'Все'; const names=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']; const [y,m]=(ym||'').split('-'); return (names[Number(m)-1]||ym)+' '+y; }
-function filteredRecords(){ return selectedMonth==='all' ? records : records.filter(r=>(r.month||monthFromDate(r.date))===selectedMonth); }
+function filteredRecords(){ const src=activeRecords(); return selectedMonth==='all' ? src : src.filter(r=>(r.month||monthFromDate(r.date))===selectedMonth); }
+
+function normalizeSheetRecord(r){
+  r = r || {};
+  const out = Object.assign({}, r);
+  out.local_id = out.local_id || out.id || out.ID || '';
+  out.created_at = out.created_at || out.createdAt || '';
+  out.date = out.date || out.Date || out['Дата'] || '';
+  out.month = out.month || out.Month || monthFromDate(out.date);
+  out.platform = out.platform || out.Platform || out['Платформа'] || 'Vinted';
+  out.title = out.title || out.Item || out.item || out['Название'] || out['Товар'] || '';
+  out.amount = normalizeAmount(String(out.amount || out.Amount || out['Сумма'] || ''));
+  out.currency = out.currency || out.Currency || out['Валюта'] || 'EUR';
+  out.invoice = String(out.invoice || out.Invoice || out.transaction || out['Инвойс'] || out['Транзакция'] || '').replace(/\.0$/,'');
+  out.reference = out.reference || out.Reference || out['Назначение'] || buildReferenceFromRecord(out);
+  out.status = out.status || out.Status || out['Статус'] || '';
+  out.comment = out.comment || out.Comment || out['Комментарий'] || '';
+  out.platformImage = out.platformImage || out.platform_image || out.platformImageUrl || out.platform_shot_url || out.platform_shot || '';
+  out.itemImage = out.itemImage || out.item_image || out.itemImageUrl || out.item_shot_url || out.extra_shots || '';
+  // Если эта же запись есть в локальном кэше этого устройства, берём локальные base64-картинки для красивого PDF.
+  const local = records.find(x => String(x.local_id||'') === String(out.local_id||''));
+  if(local){
+    if(local.platformImage && !/^https?:/i.test(String(out.platformImage||''))) out.platformImage = local.platformImage;
+    if(local.itemImage && !/^https?:/i.test(String(out.itemImage||''))) out.itemImage = local.itemImage;
+  }
+  return out;
+}
+function buildReferenceFromRecord(r){
+  let s='Payment for '+(r.title||'[item]');
+  if(r.invoice) s+=' by the invoice #'+r.invoice;
+  if(r.date) s+=' from '+r.date;
+  return s;
+}
+function jsonpRequest(params, timeoutMs=12000){
+  return new Promise((resolve,reject)=>{
+    if(!settings.endpoint){ reject(new Error('Не указан Apps Script URL')); return; }
+    const cb='fop_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const qs=new URLSearchParams(Object.assign({}, params, { callback: cb, _: Date.now() })).toString();
+    const script=document.createElement('script');
+    let done=false;
+    const clean=()=>{ try{ delete window[cb]; }catch(e){} script.remove(); clearTimeout(timer); };
+    const timer=setTimeout(()=>{ if(done)return; done=true; clean(); reject(new Error('Таблица не ответила. Нужен Code.gs с doGet JSONP и action=listSales.')); }, timeoutMs);
+    window[cb]=(data)=>{ if(done)return; done=true; clean(); resolve(data); };
+    script.onerror=()=>{ if(done)return; done=true; clean(); reject(new Error('Не удалось загрузить ответ Apps Script')); };
+    script.src=settings.endpoint+(settings.endpoint.includes('?')?'&':'?')+qs;
+    document.body.appendChild(script);
+  });
+}
+async function loadSheetArchive(force){
+  if(archiveLoading) return;
+  archiveLoading=true;
+  const st=$('archiveStatus');
+  if(st) st.innerHTML='<span class="warn">Загружаю архив из Google Таблицы...</span>';
+  try{
+    const data=await jsonpRequest({ action:'listSales' });
+    if(!data || data.ok===false) throw new Error((data&&data.error)||'Пустой ответ таблицы');
+    const arr = Array.isArray(data.records) ? data.records : (Array.isArray(data.data) ? data.data : []);
+    sheetRecords = arr.map(normalizeSheetRecord).filter(r=>r.title || r.amount || r.invoice);
+    archiveLoadedFromSheet = true;
+    if(st) st.innerHTML='<span class="ok">Архив загружен из Google Таблицы: '+sheetRecords.length+' записей.</span>';
+    renderArchive();
+  }catch(e){
+    archiveLoadedFromSheet = false;
+    if(st) st.innerHTML='<span class="err">Не удалось прочитать Google Таблицу: '+escapeHtml(e.message)+'. Показываю локальный кэш этого устройства.</span>';
+    if(force) toast('Таблица не ответила','err');
+    renderArchive();
+  }finally{ archiveLoading=false; }
+}
 function renderArchive(){
   const months=['all',...getMonths()];
   $('monthbar').innerHTML = months.map(m=>'<button class="btn small '+(m===selectedMonth?'active':'')+'" onclick="selectedMonth=\''+m+'\';renderArchive()">'+monthLabel(m)+'</button>').join('');
   const list=filteredRecords();
+  const sourceText = archiveLoadedFromSheet ? 'Google Таблица' : 'локальный кэш';
   const total=list.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);
-  $('summary').innerHTML='<div class="sumcard"><span>Записей</span><b>'+list.length+'</b></div><div class="sumcard"><span>Сумма</span><b>€ '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+monthLabel(selectedMonth)+'</b></div>';
+  $('summary').innerHTML='<div class="sumcard"><span>Источник</span><b>'+sourceText+'</b></div><div class="sumcard"><span>Записей / сумма</span><b>'+list.length+' · € '+total.toFixed(2)+'</b></div><div class="sumcard"><span>Месяц</span><b>'+monthLabel(selectedMonth)+'</b></div>';
   if(!list.length){ $('archive').innerHTML='<div class="card"><div class="sub">Записей пока нет.</div></div>'; return; }
   $('archive').innerHTML = list.map((r,idx)=>{
-    const globalIndex=records.indexOf(r);
+    const globalIndex=(archiveLoadedFromSheet ? sheetRecords.indexOf(r) : records.indexOf(r));
     return '<div class="rec"><div class="recTop"><div><div class="recTitle">'+escapeHtml(r.title||'—')+'</div><div class="pill">'+escapeHtml(r.platform||'')+' · '+escapeHtml(r.date||'')+' · '+escapeHtml(r.invoice||'')+'</div></div><div class="money">€ '+Number(parseFloat(r.amount)||0).toFixed(2)+'</div></div>'+
-    '<div class="imgs">'+(r.platformImage?'<img src="'+r.platformImage+'" onclick="openImg(this.src)">':'')+(r.itemImage?'<img src="'+r.itemImage+'" onclick="openImg(this.src)">':'')+'</div>'+
+    '<div class="imgs">'+imageOrLink(r.platformImage,'Скрин платформы')+imageOrLink(r.itemImage,'Фото товара')+'</div>'+
     '<div class="ref"><div class="reftext">'+escapeHtml(r.reference||'')+'</div><button class="btn small" onclick="copyText(`'+escapeBacktick(r.reference||'')+'`)">копия</button></div>'+
-    '<div class="actions"><button class="btn small" onclick="resend('+globalIndex+')">в таблицу</button><button class="btn small" onclick="editRec('+globalIndex+')">редактировать</button><button class="btn small red" onclick="delRec('+globalIndex+')">удалить</button></div></div>';
+    '<div class="actions"><button class="btn small" onclick="makeOnePDF('+globalIndex+')">PDF позиции</button>'+(archiveLoadedFromSheet?'':'<button class="btn small" onclick="resend('+globalIndex+')">в таблицу</button><button class="btn small" onclick="editRec('+globalIndex+')">редактировать</button><button class="btn small red" onclick="delRec('+globalIndex+')">удалить</button>')+'</div></div>';
   }).join('');
+}
+function imageOrLink(src,label){
+  if(!src) return '';
+  const safe=escapeHtml(src);
+  if(/^data:image\//.test(src)) return '<img src="'+src+'" onclick="openImg(this.src)">';
+  return '<div class="card" style="padding:10px;margin:0;min-height:80px"><div class="mini">'+escapeHtml(label)+'</div><a class="btn small" href="'+safe+'" target="_blank" rel="noopener">открыть файл</a></div>';
 }
 function escapeHtml(s){ return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function escapeBacktick(s){ return String(s||'').replace(/`/g,'\\`').replace(/\\/g,'\\\\'); }
@@ -331,16 +411,101 @@ function downloadCSV(){
   downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),'fop_sales_'+(selectedMonth==='all'?'all':selectedMonth)+'.csv');
 }
 function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-async function makeMonthPDF(){
-  const rows=filteredRecords(); if(!rows.length){ toast('Нет записей для PDF','err'); return; }
-  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); const W=210,H=297,P=12;
-  doc.setFillColor(30,30,35); doc.rect(0,0,W,34,'F'); doc.setTextColor(212,170,106); doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text('FOP Sales Report',P,15); doc.setTextColor(230,230,230); doc.setFontSize(10); doc.text(monthLabel(selectedMonth),P,25);
-  let y=45; let total=rows.reduce((a,r)=>a+(parseFloat(r.amount)||0),0); doc.setTextColor(40,40,40); doc.setFontSize(10); doc.text('Total: EUR '+total.toFixed(2)+'   Records: '+rows.length,P,y); y+=10;
-  doc.setFontSize(7); doc.setTextColor(80,80,80); doc.setFont(undefined,'bold'); doc.text('DATE',P,y); doc.text('PLATFORM',P+25,y); doc.text('ITEM',P+55,y); doc.text('INVOICE',P+125,y); doc.text('EUR',W-P,y,{align:'right'}); y+=5; doc.setFont(undefined,'normal');
-  rows.forEach((r,i)=>{ if(y>280){ doc.addPage(); y=15; } doc.setTextColor(50,50,50); doc.text(String(r.date||''),P,y); doc.text(String(r.platform||''),P+25,y); doc.text(String(r.title||'').slice(0,42),P+55,y); doc.text(String(r.invoice||'').slice(0,18),P+125,y); doc.text(Number(parseFloat(r.amount)||0).toFixed(2),W-P,y,{align:'right'}); y+=6; });
-  for(const r of rows){ doc.addPage(); y=14; doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.setTextColor(30,30,30); doc.text(String(r.title||'—').slice(0,70),P,y); y+=7; doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.text('Date: '+(r.date||'')+'   Platform: '+(r.platform||'')+'   Amount: EUR '+Number(parseFloat(r.amount)||0).toFixed(2),P,y); y+=6; doc.text('Invoice: '+(r.invoice||''),P,y); y+=6; const lines=doc.splitTextToSize('Reference: '+(r.reference||''),W-P*2); doc.text(lines,P,y); y+=lines.length*5+4; if(r.platformImage){ try{ doc.addImage(r.platformImage,'JPEG',P,y,W-P*2,90,undefined,'MEDIUM'); y+=95; }catch(e){} } if(r.itemImage){ try{ doc.addImage(r.itemImage,'JPEG',P,y,W-P*2,90,undefined,'MEDIUM'); }catch(e){} } }
-  doc.save('FOP_report_'+(selectedMonth==='all'?'all':selectedMonth)+'.pdf');
+async function makeOnePDF(i){
+  const src=archiveLoadedFromSheet ? sheetRecords : records;
+  const r=src[i];
+  if(!r){ toast('Запись не найдена','err'); return; }
+  await buildPDFForRows([r], 'FOP_record_'+(r.invoice||r.local_id||Date.now()));
 }
+async function makeMonthPDF(){
+  const rows=filteredRecords();
+  if(!rows.length){ toast('Нет записей для PDF','err'); return; }
+  await buildPDFForRows(rows, 'FOP_report_'+(selectedMonth==='all'?'all':selectedMonth));
+}
+async function buildPDFForRows(rows, fileBase){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210, H=297, P=12;
+  const usableW=W-P*2;
+  function pdfMonthLabel(){ return selectedMonth==='all' ? 'All months' : String(selectedMonth||''); }
+  function safeText(v){ return String(v||'').replace(/[\u2013\u2014]/g,'-'); }
+  function imgSize(src){
+    return new Promise(resolve=>{
+      if(!src || !/^data:image\//.test(src)) return resolve(null);
+      const im=new Image();
+      im.onload=()=>resolve({w:im.naturalWidth||im.width,h:im.naturalHeight||im.height});
+      im.onerror=()=>resolve(null);
+      im.src=src;
+    });
+  }
+  function fitContain(nw,nh,bx,by,bw,bh){
+    const scale=Math.min(bw/nw,bh/nh);
+    const w=nw*scale, h=nh*scale;
+    return {x:bx+(bw-w)/2,y:by+(bh-h)/2,w,h};
+  }
+  async function drawImageSmart(src,label,x,y,bw,bh){
+    if(!src) return y;
+    if(!/^data:image\//.test(src)){
+      if(y+18>H-P){ doc.addPage(); y=P; }
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      const lines=doc.splitTextToSize(label+': '+safeText(src),bw);
+      doc.text(lines.slice(0,3),x,y);
+      return y+lines.slice(0,3).length*4+4;
+    }
+    const size=await imgSize(src);
+    if(!size) return y;
+    if(y+bh+12>H-P){ doc.addPage(); y=P; }
+    doc.setFontSize(7); doc.setFont(undefined,'bold'); doc.setTextColor(120,120,120);
+    doc.text(label,x,y); y+=4;
+    doc.setDrawColor(225,225,225); doc.setLineWidth(0.25);
+    doc.roundedRect(x,y,bw,bh,2,2,'S');
+    const f=fitContain(size.w,size.h,x+1,y+1,bw-2,bh-2);
+    const type=src.startsWith('data:image/png')?'PNG':'JPEG';
+    try{ doc.addImage(src,type,f.x,f.y,f.w,f.h,undefined,'MEDIUM'); }catch(e){}
+    return y+bh+7;
+  }
+  doc.setFillColor(30,30,35); doc.rect(0,0,W,34,'F');
+  doc.setTextColor(212,170,106); doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text('FOP Sales Report',P,15);
+  doc.setTextColor(230,230,230); doc.setFontSize(10);
+  doc.text(rows.length===1 ? 'Single record' : pdfMonthLabel(),P,25);
+  let y=45;
+  const total=rows.reduce((a,r)=>a+(parseFloat(r.amount)||0),0);
+  doc.setTextColor(40,40,40); doc.setFontSize(10); doc.setFont(undefined,'bold');
+  doc.text('Total: EUR '+total.toFixed(2)+'   Records: '+rows.length,P,y); y+=11;
+  doc.setFontSize(7); doc.setTextColor(80,80,80); doc.setFont(undefined,'bold');
+  doc.text('DATE',P,y); doc.text('PLATFORM',P+25,y); doc.text('ITEM',P+55,y); doc.text('INVOICE',P+130,y); doc.text('EUR',W-P,y,{align:'right'}); y+=5;
+  doc.setFont(undefined,'normal');
+  rows.forEach((r,i)=>{
+    if(y>280){ doc.addPage(); y=15; }
+    if(i%2===0){ doc.setFillColor(248,248,248); doc.rect(P,y-4,usableW,6,'F'); }
+    doc.setTextColor(45,45,45);
+    doc.text(safeText(r.date||''),P,y);
+    doc.text(safeText(r.platform||''),P+25,y);
+    doc.text(safeText(r.title||'').slice(0,45),P+55,y);
+    doc.text(safeText(r.invoice||'').slice(0,18),P+130,y);
+    doc.text(Number(parseFloat(r.amount)||0).toFixed(2),W-P,y,{align:'right'});
+    y+=6;
+  });
+  for(const r of rows){
+    doc.addPage(); y=14;
+    doc.setTextColor(30,30,30); doc.setFontSize(13); doc.setFont(undefined,'bold');
+    const titleLines=doc.splitTextToSize(safeText(r.title||'-'),usableW);
+    doc.text(titleLines.slice(0,2),P,y); y+=titleLines.slice(0,2).length*6+2;
+    doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(55,55,55);
+    doc.text('Date: '+safeText(r.date||'')+'    Platform: '+safeText(r.platform||'')+'    Amount: '+safeText(r.currency||'EUR')+' '+Number(parseFloat(r.amount)||0).toFixed(2),P,y); y+=5;
+    doc.text('Invoice: '+safeText(r.invoice||''),P,y); y+=5;
+    const refLines=doc.splitTextToSize('Reference: '+safeText(r.reference||''),usableW);
+    doc.text(refLines.slice(0,3),P,y); y+=refLines.slice(0,3).length*4.5+5;
+    if(r.platformImage) y=await drawImageSmart(r.platformImage,'VINTED / PLATFORM SCREENSHOT',P,y,usableW,118);
+    if(r.itemImage){ const remaining=H-P-y-4; const boxH=Math.max(62, Math.min(92, remaining)); y=await drawImageSmart(r.itemImage,'ITEM / POSITION PHOTO',P,y,usableW,boxH); }
+    doc.setTextColor(170,170,170); doc.setFontSize(7);
+    doc.text('Generated '+new Date().toLocaleDateString('ru-RU'),W/2,H-5,{align:'center'});
+  }
+  doc.save(fileBase+'.pdf');
+}
+
+
 updateRef();
 </script>
 </body>
