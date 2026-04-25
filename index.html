@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП</title>
+<title>Учёт ФОП v4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -210,20 +210,22 @@ function parseText(raw){
   return data;
 }
 function fixTitle(s){
-  return (s||'')
+  let t = (s||'')
     .replace(/["“”«»]/g,'')
     .replace(/\s+ha\s+(finalizado|completado|terminado).*$/i,'')
     .replace(/\s+correctamente\.?\s*$/i,'')
-    .replace(/N\.?\s*[°ºo].*$/i,'')
-    .replace(/Precio.*$/i,'')
-    .replace(/Transferencia.*$/i,'')
+    // ВАЖНО: не удаляем /N.../ внутри слов типа Monogram.
+    // Убираем только отдельную строку с номером транзакции, если OCR прихватил её после названия.
+    .replace(/(?:^|\n)\s*N\.?\s*[°ººo]?\s*de\s+transacci[oó]n.*$/im,'')
+    .replace(/(?:^|\n)\s*Precio.*$/im,'')
+    .replace(/(?:^|\n)\s*Transferencia.*$/im,'')
     .replace(/\s{2,}/g,' ')
     .trim();
+  return t;
 }
 function fixInvoice(s){
-  let n=(s||'').replace(/\D/g,'');
-  if(n.length===12 && n.startsWith('4')) n=n.slice(1);
-  return n;
+  // Ничего не срезаем: если Vinted дал номер с 4 в начале, оставляем как есть.
+  return (s||'').replace(/\D/g,'');
 }
 function normalizeAmount(s){ return (s||'').replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',', '.').replace(/[^0-9.]/g,''); }
 function fmtDate(inp){ let v=inp.value.replace(/\D/g,''); if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2); if(v.length>5) v=v.slice(0,5)+'/'+v.slice(5); inp.value=v.slice(0,10); }
