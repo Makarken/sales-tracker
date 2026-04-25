@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Учёт ФОП v4</title>
+<title>Учёт ФОП v5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
@@ -14,7 +14,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="logo">Учёт <span>ФОП</span></div>
+  <div class="logo">Учёт <span>ФОП</span> <small style="font-size:11px;color:#d4aa6a;vertical-align:middle">v5</small></div>
   <div class="nav">
     <button class="btn active" id="bNew" onclick="tab('new')">Разбор скрина</button>
     <button class="btn" id="bArch" onclick="tab('arch')">Архив</button>
@@ -224,8 +224,13 @@ function fixTitle(s){
   return t;
 }
 function fixInvoice(s){
-  // Ничего не срезаем: если Vinted дал номер с 4 в начале, оставляем как есть.
-  return (s||'').replace(/\D/g,'');
+  let n = (s||'').replace(/\D/g,'');
+  // Tesseract часто читает символ # перед номером Vinted как цифру 4:
+  // #19090161924 -> 419090161924. В самих скринах Vinted номер обычно 11 цифр,
+  // поэтому если вышло 12 цифр, начинается с 4, а после удаления 4 получается
+  // нормальный номер на 11 цифр, начинающийся на 18/19/20/21 — убираем эту лишнюю 4.
+  if(/^4(?:18|19|20|21)\d{9}$/.test(n)) n = n.slice(1);
+  return n;
 }
 function normalizeAmount(s){ return (s||'').replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',', '.').replace(/[^0-9.]/g,''); }
 function fmtDate(inp){ let v=inp.value.replace(/\D/g,''); if(v.length>2) v=v.slice(0,2)+'/'+v.slice(2); if(v.length>5) v=v.slice(0,5)+'/'+v.slice(5); inp.value=v.slice(0,10); }
